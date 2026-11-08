@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_external_validation",
+  "protocol_status": "frozen_before_external_measurement",
+  "frozen_utc": "2026-07-19T00:00:00Z",
+  "targets": [
+    "Intel Core i9-14900 Ubuntu 20.04",
+    "K230 C908 RT-Smart RV64GCV"
+  ],
+  "sparse_calibration": {
+    "dtype": "f64",
+    "contract": "BLIS Haswell dgemm 6x8",
+    "calibration_row_budgets": [5, 10, 20, 40, 80],
+    "calibration_seeds": [307, 401, 503, 607, 701],
+    "search_seeds": [11, 29, 41, 73, 101],
+    "search_checkpoints": [5, 10],
+    "oracle_fraction": 0.95,
+    "prior_precision": 1.0,
+    "minimum_noise_variance": 0.0001,
+    "posterior_sampling_scale": 1.0,
+    "bootstrap_seed": 20260719,
+    "bootstrap_replicates": 20000,
+    "cluster_unit": "workload",
+    "methods": [
+      "N0_uniform_without_replacement",
+      "D0_data_only_thompson",
+      "D1_expert_plus_data_thompson"
+    ],
+    "feature_ablation": {
+      "data_only_excludes": [
+        "active_static_score",
+        "family_*_x_static"
+      ],
+      "expert_plus_data_includes": "all frozen schedule and workload features"
+    },
+    "leakage_policy": "Only design and validation target rows may enter calibration. Holdout runtimes are revealed after the complete candidate ordering is frozen. Label-free feature scaling uses design and validation candidate metadata only.",
+    "primary_comparison": "D1_expert_plus_data_thompson_vs_D0_data_only_thompson"
+  },
+  "transformer_pool": {
+    "dtype": "f32",
+    "workloads": "data/transformer_workloads.json",
+    "i9_contract": "BLIS Haswell sgemm 6x16",
+    "k230_contract": "OpenBLAS RISCV64_ZVL128B sgemm 8x8",
+    "i9_pool_size": 28,
+    "k230_candidate_count": 16,
+    "warmups": 1,
+    "repeats_per_process": 3,
+    "process_trials": 3,
+    "search_checkpoints": [5, 10],
+    "cpu_affinity_policy": "one detected performance core on i9; one RT-Smart process on K230",
+    "correctness": "deterministic projection check outside the timed region",
+    "complete_library_baselines": [
+      "single-thread BLIS sgemm on i9",
+      "single-thread OpenBLAS cblas_sgemm on K230"
+    ]
+  },
+  "mechanism_counters": {
+    "i9": "perf stat on the pool-best generated schedule and complete BLIS when kernel permissions allow",
+    "k230": "in-adapter pack-A, pack-B, microkernel, scatter, kernel-call and fringe-call counters"
+  },
+  "acceptance": {
+    "sparse_expert_increment": "At calibration budget <= 20, D1/D0 cluster-bootstrap CI lower bound must exceed 1.0 on both x86 hosts.",
+    "common_pool_oracle": "D0 and D1 must consume the same workload-specific candidate pool and therefore share the same oracle.",
+    "independent_backend": "After the generator hash is frozen, the K230 path may add only a Contract descriptor, package-local candidate data, the OpenBLAS packing/call adapter, and deployment code.",
+    "realistic_workloads": "Report every workload, complete-library ratio, direct/adapt path, correctness, and total tuning plus execution cost; do not claim full-model speedup."
+  },
+  "claim_boundary": "This extension evaluates sparse target calibration, realistic Transformer GEMM shapes, and a second library/ISA microkernel package. It remains single-threaded, row-major, f32/f64 GEMM evidence rather than an end-to-end model or universal backend result."
+}

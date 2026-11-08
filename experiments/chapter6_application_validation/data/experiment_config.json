@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_application_validation",
+  "protocol_status": "first_confirmatory_local_x86_measurement_failed_stability_gate; measurement_qualification_frozen_before_execution",
+  "frozen_utc": "2026-07-22T01:03:01Z",
+  "questions": {
+    "k230_mlir_closure": "Can generated Contract parameters flow through linalg and Transform Dialect lowering into the same OpenBLAS packing and sgemm_kernel adapter on K230?",
+    "model_relevance": "What fraction of a real Qwen2.5-0.5B Transformer projection trace is represented by the frozen workload pool?",
+    "weighted_boundary": "What is the trace-weighted latency and tuning-cost boundary on the local x86 host and, once available, the external targets?"
+  },
+  "local_x86": {
+    "target_id": "i7_10750h_wsl2",
+    "workloads": "the eight exact GEMM shapes emitted by the Qwen trace",
+    "candidate_pool_size_per_workload": 28,
+    "measurement_phase": "confirmatory_after_two_disclosed_pilot_runs",
+    "pilot_instability_record": "provenance/local_x86_pilot_instability.json",
+    "cpu_affinity": 10,
+    "warmups": 2,
+    "repeats_per_process": 3,
+    "process_trials_per_batch": 3,
+    "batch_count": 3,
+    "target_timed_flops_per_sample": 100000000,
+    "maximum_inner_iters": 10,
+    "settle_seconds": 3,
+    "thread_environment": {
+      "BLIS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1"
+    },
+    "stability_acceptance": {
+      "minimum_process_medians_per_variant": 9,
+      "maximum_robust_cv": 0.15,
+      "minimum_variant_pass_fraction": 0.95,
+      "maximum_pool_to_library_batch_ratio_spread": 0.15
+    },
+    "search_checkpoints": [5, 10],
+    "search_seeds": [11, 29, 41, 73, 101],
+    "complete_library_baseline": "single-thread BLIS sgemm",
+    "measurement_scope": "single-thread kernel execution; no model framework, tokenization, attention, or lm_head time"
+  },
+  "local_x86_measurement_qualification": {
+    "protocol_id": "wsl_cpu_affinity_and_timing_window_qualification_v1",
+    "frozen_utc": "2026-07-22T01:03:01Z",
+    "purpose": "diagnose measurement fitness only; qualification timings are excluded from performance claims",
+    "first_confirmatory_result": {
+      "status": "FAIL_UNSTABLE",
+      "process_medians_per_variant": 9,
+      "variant_pass_fraction": 0.15948275862068967,
+      "pool_to_blis_batch_ratio_relative_spread": 0.1143117403771475,
+      "artifact": "targets/i7_10750h/processed/summary.json"
+    },
+    "cpu_candidates": [0, 2, 4, 6, 8, 10],
+    "cases": [
+      {
+        "workload_id": "qkv_decode_m8",
+        "candidate_id": "m6_n64_k128_pab_v0"
+      },
+      {
+        "workload_id": "gate_up_prefill_m32",
+        "candidate_id": "m24_n128_k256_pab_v0"
+      }
+    ],
+    "variants": ["generated_candidate", "B5_blis"],
+    "process_trials_per_variant": 5,
+    "warmups": 4,
+    "repeats_per_process": 7,
+    "target_timed_flops_per_sample": 1000000000,
+    "maximum_inner_iters": 64,
+    "settle_seconds": 1,
+    "acceptance": {
+      "maximum_robust_cv": 0.15,
+      "required_case_variant_pass_fraction": 1.0,
+      "selection_rule": "select the lowest-numbered CPU among qualifying CPUs; never select by throughput"
+    },
+    "decision": {
+      "if_pass": "freeze the selected CPU and execute confirmatory protocol v2",
+      "if_fail": "stop local WSL performance claims and retain only correctness, liveness, trace, and static-closure evidence"
+    },
+    "confirmatory_v2_if_qualified": {
+      "warmups": 3,
+      "repeats_per_process": 5,
+      "process_trials_per_batch": 2,
+      "batch_count": 3,
+      "target_timed_flops_per_sample": 500000000,
+      "maximum_inner_iters": 32,
+      "settle_seconds": 5,
+      "stability_acceptance": {
+        "minimum_process_medians_per_variant": 6,
+        "maximum_robust_cv": 0.15,
+        "minimum_variant_pass_fraction": 0.95,
+        "maximum_pool_to_library_batch_ratio_spread": 0.15
+      }
+    }
+  },
+  "k230": {
+    "cases": "data/k230_mlir_closure_cases.json",
+    "warmups": 1,
+    "process_trials": 5,
+    "required_variants": [
+      "c_adapter_direct",
+      "mlir_transform_adapter",
+      "openblas_full"
+    ],
+    "primary_parity_metric": "mlir_transform_adapter_time / c_adapter_direct_time",
+    "acceptance": {
+      "correctness": "all rows pass deterministic projection checking",
+      "path": "all generated LLVM IR files call their Transform-selected adapter symbol",
+      "runtime": "all MLIR entry points reach the shared adapter and OpenBLAS sgemm_kernel",
+      "parity": "the workload-cluster interval for C-adapter/MLIR-adapter includes 1.0 or its point estimate differs by no more than 5 percent"
+    }
+  },
+  "qwen_trace": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "model_config": "data/qwen2_5_0_5b_instruct_config.json",
+    "execution": "Hugging Face Qwen2ForCausalLM shape execution with parameterized modules replaced by stateless shape-preserving modules",
+    "scenarios": [
+      {"id": "decode_batch8", "batch": 8, "sequence": 1, "m": 8},
+      {"id": "prefill_batch1_seq32", "batch": 1, "sequence": 32, "m": 32}
+    ],
+    "canonicalization": {
+      "q_proj+k_proj+v_proj": "qkv",
+      "gate_proj+up_proj": "gate_up",
+      "o_proj": "attention_output",
+      "down_proj": "down_projection"
+    },
+    "scope": "24 Transformer blocks; lm_head is retained in the raw trace but excluded from the core projection coverage claim"
+  },
+  "claim_boundary": "The experiment validates a representative MLIR-to-K230 adapter closure and a real model-code GEMM shape trace. It does not claim full-model execution, multithreaded speedup, or universal RISC-V backend portability."
+}

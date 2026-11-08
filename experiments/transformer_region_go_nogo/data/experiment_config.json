@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.transformer_region_go_nogo",
+  "title": "Transformer fan-out shared-activation-packing go/no-go",
+  "model": {
+    "name": "Qwen2.5-0.5B-Instruct",
+    "source": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/config.json",
+    "hidden_size": 896,
+    "intermediate_size": 4864,
+    "num_attention_heads": 14,
+    "num_key_value_heads": 2,
+    "head_dim": 64,
+    "source_checked_utc": "2026-07-17"
+  },
+  "dtype": "f32",
+  "backend": "BLIS Haswell 6x16 single-thread microkernel",
+  "microkernel_contract": {
+    "mr": 6,
+    "nr": 16,
+    "kc": 256,
+    "packed_alignment_bytes": 64
+  },
+  "regions": [
+    {
+      "id": "qkv",
+      "input_k": 896,
+      "branch_n": [896, 128, 128],
+      "meaning": ["Q", "K", "V"]
+    },
+    {
+      "id": "gate_up",
+      "input_k": 896,
+      "branch_n": [4864, 4864],
+      "meaning": ["Gate", "Up"]
+    }
+  ],
+  "phases": [
+    {"id": "decode_m1", "group": "decode", "m": 1},
+    {"id": "decode_m8", "group": "decode", "m": 8},
+    {"id": "prefill_m64", "group": "prefill", "m": 64},
+    {"id": "prefill_m256", "group": "prefill", "m": 256}
+  ],
+  "variants": [
+    {
+      "id": "independent_blis",
+      "description": "One complete bli_sgemm call per fan-out branch"
+    },
+    {
+      "id": "concatenated_blis",
+      "description": "Concatenate constant weights along N and issue one complete bli_sgemm call"
+    },
+    {
+      "id": "repacked_a_microkernel",
+      "description": "Persistently prepack B, repack the shared activation once per branch, then call the real BLIS 6x16 microkernel"
+    },
+    {
+      "id": "shared_a_microkernel",
+      "description": "Persistently prepack B, pack the activation once per region, then reuse it across all branches"
+    }
+  ],
+  "measurement": {
+    "cpu_affinity": 10,
+    "blis_threads": 1,
+    "variant_interleaving": "per_repeat_rotating_order",
+    "warmups": 2,
+    "repeats": 7,
+    "trials": 5,
+    "target_flops_per_sample": 500000000,
+    "max_inner_iters": 256,
+    "bootstrap_resamples": 5000,
+    "bootstrap_seed": 20260717
+  },
+  "local_go_criteria": {
+    "minimum_geomean_speedup": 1.05,
+    "minimum_case_win_fraction": 0.75,
+    "require_bootstrap_lower_bound_above_one": true,
+    "require_each_region_geomean_above_one": true,
+    "require_each_phase_group_geomean_above_one": true,
+    "required_comparisons": [
+      "shared_a_microkernel_vs_repacked_a_microkernel",
+      "shared_a_microkernel_vs_concatenated_blis"
+    ]
+  },
+  "claim_boundary": "This is a native mechanism probe using real BLIS frontend calls and the real BLIS Haswell 6x16 microkernel. It tests whether compiler-visible shared activation packing can beat both repeated packing and a concatenated-weight single-BLIS strong baseline. It does not yet implement an MLIR graph planner, low-precision kernels, a complete Transformer block, or an end-to-end model."
+}

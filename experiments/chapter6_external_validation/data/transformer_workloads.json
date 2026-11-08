@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "declaration_status": "frozen_before_external_measurement",
+  "model_reference": {
+    "name": "Qwen2.5-0.5B-Instruct",
+    "hidden_size": 896,
+    "intermediate_size": 4864,
+    "qkv_width": 1152,
+    "gate_up_width": 9728
+  },
+  "workloads": [
+    {
+      "id": "qkv_decode_m8",
+      "family": "model_rect",
+      "phase": "decode_microbatch",
+      "region": "qkv",
+      "m": 8,
+      "k": 896,
+      "n": 1152
+    },
+    {
+      "id": "gate_up_decode_m8",
+      "family": "model_rect",
+      "phase": "decode_microbatch",
+      "region": "gate_up_concatenated",
+      "m": 8,
+      "k": 896,
+      "n": 9728
+    },
+    {
+      "id": "down_decode_m8",
+      "family": "model_rect",
+      "phase": "decode_microbatch",
+      "region": "down_projection",
+      "m": 8,
+      "k": 4864,
+      "n": 896
+    },
+    {
+      "id": "out_decode_m8",
+      "family": "model_rect",
+      "phase": "decode_microbatch",
+      "region": "attention_output",
+      "m": 8,
+      "k": 896,
+      "n": 896
+    },
+    {
+      "id": "qkv_prefill_m32",
+      "family": "model_rect",
+      "phase": "prefill",
+      "region": "qkv",
+      "m": 32,
+      "k": 896,
+      "n": 1152
+    },
+    {
+      "id": "gate_up_prefill_m32",
+      "family": "model_rect",
+      "phase": "prefill",
+      "region": "gate_up_concatenated",
+      "m": 32,
+      "k": 896,
+      "n": 9728
+    },
+    {
+      "id": "down_prefill_m32",
+      "family": "model_rect",
+      "phase": "prefill",
+      "region": "down_projection",
+      "m": 32,
+      "k": 4864,
+      "n": 896
+    },
+    {
+      "id": "out_prefill_m32",
+      "family": "model_rect",
+      "phase": "prefill",
+      "region": "attention_output",
+      "m": 32,
+      "k": 896,
+      "n": 896
+    },
+    {
+      "id": "qkv_fringe_m17",
+      "family": "tail",
+      "phase": "fringe_stress",
+      "region": "qkv_perturbed",
+      "m": 17,
+      "k": 897,
+      "n": 1153
+    },
+    {
+      "id": "down_fringe_m33",
+      "family": "tail",
+      "phase": "fringe_stress",
+      "region": "down_projection_perturbed",
+      "m": 33,
+      "k": 4865,
+      "n": 895
+    }
+  ]
+}

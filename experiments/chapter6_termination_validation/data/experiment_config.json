@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_termination_validation",
+  "environment": "i7_10750h_wsl2",
+  "dtype": "f64",
+  "contract": "haswell_f64_gemm_6x8",
+  "source_same_pool_config": "chapter6_same_pool_prior/data/experiment_config.json",
+  "source_workloads": "chapter6_evaluation/data/workloads.json",
+  "source_trials": "cgo_extension/raw/f64_contract_trials.csv",
+  "source_manifests": "cgo_extension/processed/f64_manifests.json",
+  "methods": {
+    "B2_no_prior_baco": "No-prior BaCO reference on the common finite pool.",
+    "D0_data_only_baco": "Target-data calibration using geometry and workload-family features only.",
+    "D1_expert_plus_data_baco": "The same target data and geometry features plus BLIS-derived soft performance-score features."
+  },
+  "shared_hard_knowledge": [
+    "Contract compatibility filtering",
+    "fixed pack_mode=ab",
+    "fixed MR=6 and NR=8",
+    "direct/adapt legality and finite fringe support"
+  ],
+  "expert_performance_features": [
+    "active_static_score",
+    "family_*_x_static"
+  ],
+  "active_search_parameters": ["tile_m", "tile_n", "tile_k"],
+  "checkpoints": [5, 10],
+  "full_pool_trajectory": true,
+  "doe_samples": 4,
+  "seeds": [11, 29, 41, 73, 101],
+  "model_weight": 0.25,
+  "calibration": {
+    "prior_precision_candidates": [0.01, 0.1, 1.0, 10.0],
+    "minimum_noise_variance": 0.0001,
+    "prior_probability_floor": 0.000001,
+    "validation_objective": "mean_log_simple_regret_auc_at_budget_10",
+    "target_splits": ["design", "validation"]
+  },
+  "time_to_oracle": {
+    "fraction": 0.95,
+    "amortization_horizon_holdout_workloads": 12,
+    "include_compile_cost": true,
+    "include_observed_benchmark_wall_cost": true,
+    "include_model_fit_wall_cost": true
+  },
+  "statistics": {
+    "bootstrap_seed": 20260719,
+    "bootstrap_replicates": 20000,
+    "confidence_level": 0.95,
+    "cluster_unit": "workload"
+  },
+  "pre_registered_acceptance": {
+    "expert_incremental_value": "D1/D0 workload-cluster bootstrap CI lower bound must exceed 1.0 at both budget 5 and budget 10.",
+    "practical_search_value": "The complete calibration wall cost must be amortized within the 12 frozen holdout workloads relative to B2.",
+    "second_microkernel": "The unchanged core generator must create a legal f64 pool; fresh direct and adapt runs must pass path/correctness checks; full-pool search must complete without duplicates.",
+    "independent_backend": "Not tested: f32 6x16 and f64 6x8 are both BLIS Haswell kernels."
+  },
+  "claim_boundary": "Single-host offline policy replay over the complete i7 f64 Contract corpus. Holdout targets are read only after BaCO selects a unique candidate. Calibration-cost accounting uses observed compiler pipeline and benchmark subprocess wall times from the frozen corpus; these are machine-specific. The extension audit establishes a second BLIS Haswell microkernel Contract, not an independent library or ISA backend."
+}

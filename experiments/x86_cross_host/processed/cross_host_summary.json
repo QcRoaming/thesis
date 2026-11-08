@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.x86_cross_host",
+  "status": "PASS",
+  "archive": {
+    "path": "/buddy-mlir/jlq/thesis/experiments/x86_cross_host/results/thesis-x86-result--20260716T115026Z.tar.gz",
+    "sha256": "b63499c2209f08b41c0d834bd68e391a636d969c50fffd60c266e18b2970baee",
+    "imported_to": "/buddy-mlir/jlq/thesis/experiments/x86_cross_host/imported/thesis-x86-result--20260716T115026Z"
+  },
+  "hosts": {
+    "development_host": {
+      "cpu_model": "Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz",
+      "environment": "WSL2",
+      "f64_workloads": 36,
+      "f64_trial_rows": 3132,
+      "all_path_predictions_match": true,
+      "candidate_pool_relative_to_blis_gmean": 1.0638304399825744,
+      "true_online_fresh_process_rows": 6000,
+      "true_online_objective_cache_hits": 0,
+      "optuna_unique_measurements": 1500,
+      "optuna_objective_cache_hits": 0
+    },
+    "i9_14900": {
+      "cpu_model": "Intel(R) Core(TM) i9-14900",
+      "cpu_model_source": "metadata.lscpu_locale_fallback",
+      "cpu_affinity": 0,
+      "f64_workloads": 36,
+      "f64_trial_rows": 3132,
+      "all_path_predictions_match": true,
+      "candidate_pool_relative_to_blis_gmean": 0.804352569746844,
+      "true_online_fresh_process_rows": 6000,
+      "true_online_objective_cache_hits": 0,
+      "optuna_unique_measurements": 1500,
+      "optuna_objective_cache_hits": 0
+    }
+  },
+  "paired_comparisons": [
+    {
+      "comparison": "offline_calibrated_vs_random_budget5",
+      "local": {
+        "speedup": 1.1921163575359024,
+        "ci_low": 1.0546061629331496,
+        "ci_high": 1.342713087536848,
+        "conclusion": "left_better"
+      },
+      "i9_14900": {
+        "speedup": 1.05977658882377,
+        "ci_low": 1.0407103732480874,
+        "ci_high": 1.0818545569323363,
+        "conclusion": "left_better"
+      }
+    },
+    {
+      "comparison": "online_calibrated_vs_random_budget5",
+      "local": {
+        "speedup": 1.1549053032373926,
+        "ci_low": 1.0416637329144331,
+        "ci_high": 1.2770396687324406,
+        "conclusion": "left_better"
+      },
+      "i9_14900": {
+        "speedup": 1.059889565857953,
+        "ci_low": 1.040065491857785,
+        "ci_high": 1.0817001239396051,
+        "conclusion": "left_better"
+      }
+    },
+    {
+      "comparison": "online_calibrated_vs_optuna_tpe_budget5",
+      "local": {
+        "speedup": 1.0376987028219196,
+        "ci_low": 0.9200651601172681,
+        "ci_high": 1.1590070112281394,
+        "conclusion": "inconclusive"
+      },
+      "i9_14900": {
+        "speedup": 1.0653106494804148,
+        "ci_low": 1.043955106028239,
+        "ci_high": 1.0892145079761675,
+        "conclusion": "left_better"
+      }
+    },
+    {
+      "comparison": "online_calibrated_vs_random_budget25",
+      "local": {
+        "speedup": 1.0181249246972777,
+        "ci_low": 0.976661348476644,
+        "ci_high": 1.0681694618870619,
+        "conclusion": "inconclusive"
+      },
+      "i9_14900": {
+        "speedup": 0.9912686601374405,
+        "ci_low": 0.983952844897202,
+        "ci_high": 0.9993183597637042,
+        "conclusion": "left_worse"
+      }
+    },
+    {
+      "comparison": "online_calibrated_vs_optuna_tpe_budget25",
+      "local": {
+        "speedup": 0.9727545694060192,
+        "ci_low": 0.935682638579424,
+        "ci_high": 1.0062039770605429,
+        "conclusion": "inconclusive"
+      },
+      "i9_14900": {
+        "speedup": 0.994732340949819,
+        "ci_low": 0.988703135508046,
+        "ci_high": 1.000448393056714,
+        "conclusion": "inconclusive"
+      }
+    }
+  ],
+  "cross_host_findings": {
+    "hard_contract_transfer_replicated": true,
+    "fresh_online_protocol_replicated": true,
+    "low_budget_gain_over_random_replicated": true,
+    "candidate_pool_vs_blis_changes_direction": true,
+    "budget25_dominance_replicated": false
+  },
+  "claim_boundary": "Two single-thread row-major x86-64 hosts using the same fixed revisions, f64 BLIS Haswell 6x8 Contract, candidate domains and tuner budgets. The result supports transfer of hard compatibility checks and low-budget sample-efficiency trends, but not host-independent absolute schedule ranking, asymptotic tuner superiority, multithreaded behavior or universal x86 generalization."
+}

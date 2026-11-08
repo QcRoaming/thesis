@@ -1,0 +1,408 @@
+{
+  "experiment_id": "thesis.transformer_region_go_nogo",
+  "mode": "formal_local",
+  "all_correct": true,
+  "raw_row_count": 160,
+  "case_count": 8,
+  "variant_count": 4,
+  "comparison_summaries": {
+    "shared_a_microkernel_vs_repacked_a_microkernel": {
+      "geomean_speedup": 1.0061736328394373,
+      "bootstrap_95_ci": [
+        0.906186048602421,
+        1.1210077503770535
+      ],
+      "case_wins": 4,
+      "case_count": 8,
+      "case_win_fraction": 0.5,
+      "by_region_geomean": {
+        "gate_up": 0.9999523121501338,
+        "qkv": 1.0124336602056982
+      },
+      "by_phase_group_geomean": {
+        "decode": 0.9472702517699738,
+        "prefill": 1.0687397577720503
+      }
+    },
+    "shared_a_microkernel_vs_concatenated_blis": {
+      "geomean_speedup": 0.7197851798706174,
+      "bootstrap_95_ci": [
+        0.5101813192412595,
+        0.9721524846693862
+      ],
+      "case_wins": 1,
+      "case_count": 8,
+      "case_win_fraction": 0.125,
+      "by_region_geomean": {
+        "gate_up": 0.6369077736062988,
+        "qkv": 0.8134469802870269
+      },
+      "by_phase_group_geomean": {
+        "decode": 0.9966787176306312,
+        "prefill": 0.5198171647459431
+      }
+    },
+    "shared_a_microkernel_vs_independent_blis": {
+      "geomean_speedup": 0.6878423223348854,
+      "bootstrap_95_ci": [
+        0.48053564009177124,
+        0.9458263286314103
+      ],
+      "case_wins": 1,
+      "case_count": 8,
+      "case_win_fraction": 0.125,
+      "by_region_geomean": {
+        "gate_up": 0.6204907707726265,
+        "qkv": 0.7625045894009305
+      },
+      "by_phase_group_geomean": {
+        "decode": 0.9737101513557153,
+        "prefill": 0.48590133289285786
+      }
+    },
+    "shared_a_microkernel_vs_best_complete_blis": {
+      "geomean_speedup": 0.6647125032136914,
+      "bootstrap_95_ci": [
+        0.471908413553658,
+        0.8935888748160841
+      ],
+      "case_wins": 1,
+      "case_count": 8,
+      "case_win_fraction": 0.125,
+      "by_region_geomean": {
+        "gate_up": 0.6068799457598036,
+        "qkv": 0.7280562078475536
+      },
+      "by_phase_group_geomean": {
+        "decode": 0.92055139883922,
+        "prefill": 0.47997614526006743
+      }
+    },
+    "concatenated_blis_vs_independent_blis": {
+      "geomean_speedup": 0.955621679316218,
+      "bootstrap_95_ci": [
+        0.8651276990128606,
+        1.0510515713414472
+      ],
+      "case_wins": 1,
+      "case_count": 8,
+      "case_win_fraction": 0.125,
+      "by_region_geomean": {
+        "gate_up": 0.9742238931380663,
+        "qkv": 0.9373746634745374
+      },
+      "by_phase_group_geomean": {
+        "decode": 0.9769548944222284,
+        "prefill": 0.9347543056419437
+      }
+    }
+  },
+  "local_go_criteria": {
+    "minimum_geomean_speedup": 1.05,
+    "minimum_case_win_fraction": 0.75,
+    "require_bootstrap_lower_bound_above_one": true,
+    "require_each_region_geomean_above_one": true,
+    "require_each_phase_group_geomean_above_one": true,
+    "required_comparisons": [
+      "shared_a_microkernel_vs_repacked_a_microkernel",
+      "shared_a_microkernel_vs_concatenated_blis"
+    ]
+  },
+  "criterion_checks": {
+    "shared_a_microkernel_vs_repacked_a_microkernel": {
+      "geomean_at_least_threshold": false,
+      "win_fraction_at_least_threshold": false,
+      "bootstrap_lower_above_one": false,
+      "each_region_above_one": false,
+      "each_phase_group_above_one": false
+    },
+    "shared_a_microkernel_vs_concatenated_blis": {
+      "geomean_at_least_threshold": false,
+      "win_fraction_at_least_threshold": false,
+      "bootstrap_lower_above_one": false,
+      "each_region_above_one": false,
+      "each_phase_group_above_one": false
+    }
+  },
+  "decision": "NO_GO_STRONG_BASELINE_NOT_BEATEN",
+  "case_results": [
+    {
+      "case_id": "gate_up_decode_m1",
+      "region": "gate_up",
+      "phase": "decode_m1",
+      "phase_group": "decode",
+      "m": 1,
+      "k": 896,
+      "branch_n": "4864x4864",
+      "independent_blis_median_ms": 13.502811,
+      "independent_blis_median_gflops": 1.291,
+      "independent_blis_trial_cv": 0.07547895194771405,
+      "concatenated_blis_median_ms": 13.300705,
+      "concatenated_blis_median_gflops": 1.311,
+      "concatenated_blis_trial_cv": 0.0715851588712134,
+      "repacked_a_microkernel_median_ms": 10.410634,
+      "repacked_a_microkernel_median_gflops": 1.674,
+      "repacked_a_microkernel_trial_cv": 0.04481229738309039,
+      "repacked_a_microkernel_visible_pack_ms": 0.010102,
+      "shared_a_microkernel_median_ms": 9.866779,
+      "shared_a_microkernel_median_gflops": 1.767,
+      "shared_a_microkernel_trial_cv": 0.09672369014709725,
+      "shared_a_microkernel_visible_pack_ms": 0.005473,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 0.9902867931189874,
+      "shared_a_microkernel_vs_concatenated_blis": 1.3078712529396714,
+      "shared_a_microkernel_vs_independent_blis": 1.3635234150383613,
+      "shared_a_microkernel_vs_best_complete_blis": 1.263428295692629,
+      "concatenated_blis_vs_independent_blis": 1.0425517129255664,
+      "activation_pack_saved_ms": 0.004629,
+      "activation_pack_saved_fraction_of_repacked": 0.0004446415079043217,
+      "packing_only_ideal_speedup_vs_repacked": 1.0004448393019223
+    },
+    {
+      "case_id": "gate_up_decode_m8",
+      "region": "gate_up",
+      "phase": "decode_m8",
+      "phase_group": "decode",
+      "m": 8,
+      "k": 896,
+      "branch_n": "4864x4864",
+      "independent_blis_median_ms": 18.506144,
+      "independent_blis_median_gflops": 7.536,
+      "independent_blis_trial_cv": 0.05749392700357828,
+      "concatenated_blis_median_ms": 18.766954,
+      "concatenated_blis_median_gflops": 7.431,
+      "concatenated_blis_trial_cv": 0.06804035842711842,
+      "repacked_a_microkernel_median_ms": 19.739652,
+      "repacked_a_microkernel_median_gflops": 7.065,
+      "repacked_a_microkernel_trial_cv": 0.06383344278589834,
+      "repacked_a_microkernel_visible_pack_ms": 0.027231,
+      "shared_a_microkernel_median_ms": 21.313933,
+      "shared_a_microkernel_median_gflops": 6.543,
+      "shared_a_microkernel_trial_cv": 0.0947526298453882,
+      "shared_a_microkernel_visible_pack_ms": 0.011694,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 0.9349271356793908,
+      "shared_a_microkernel_vs_concatenated_blis": 0.9050779989045082,
+      "shared_a_microkernel_vs_independent_blis": 0.8833526571225304,
+      "shared_a_microkernel_vs_best_complete_blis": 0.8794685525452589,
+      "concatenated_blis_vs_independent_blis": 0.9759961662881279,
+      "activation_pack_saved_ms": 0.015537000000000002,
+      "activation_pack_saved_fraction_of_repacked": 0.0007870959427248263,
+      "packing_only_ideal_speedup_vs_repacked": 1.0007877159507537
+    },
+    {
+      "case_id": "gate_up_prefill_m256",
+      "region": "gate_up",
+      "phase": "prefill_m256",
+      "phase_group": "prefill",
+      "m": 256,
+      "k": 896,
+      "branch_n": "4864x4864",
+      "independent_blis_median_ms": 132.535178,
+      "independent_blis_median_gflops": 33.672,
+      "independent_blis_trial_cv": 0.24574968314259013,
+      "concatenated_blis_median_ms": 145.672149,
+      "concatenated_blis_median_gflops": 30.636,
+      "concatenated_blis_trial_cv": 0.21306332759267596,
+      "repacked_a_microkernel_median_ms": 566.277369,
+      "repacked_a_microkernel_median_gflops": 7.881,
+      "repacked_a_microkernel_trial_cv": 0.2493988851949808,
+      "repacked_a_microkernel_visible_pack_ms": 1.103078,
+      "shared_a_microkernel_median_ms": 515.608569,
+      "shared_a_microkernel_median_gflops": 8.655,
+      "shared_a_microkernel_trial_cv": 0.2382970053693781,
+      "shared_a_microkernel_visible_pack_ms": 0.51992,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 0.9775984924531869,
+      "shared_a_microkernel_vs_concatenated_blis": 0.2736950678297281,
+      "shared_a_microkernel_vs_independent_blis": 0.26464840153560054,
+      "shared_a_microkernel_vs_best_complete_blis": 0.26252152763361786,
+      "concatenated_blis_vs_independent_blis": 0.9669461844312239,
+      "activation_pack_saved_ms": 0.583158,
+      "activation_pack_saved_fraction_of_repacked": 0.0010298098280526551,
+      "packing_only_ideal_speedup_vs_repacked": 1.0010308714295824
+    },
+    {
+      "case_id": "gate_up_prefill_m64",
+      "region": "gate_up",
+      "phase": "prefill_m64",
+      "phase_group": "prefill",
+      "m": 64,
+      "k": 896,
+      "branch_n": "4864x4864",
+      "independent_blis_median_ms": 53.413843,
+      "independent_blis_median_gflops": 20.888,
+      "independent_blis_trial_cv": 0.03448973827495629,
+      "concatenated_blis_median_ms": 56.175236,
+      "concatenated_blis_median_gflops": 19.861,
+      "concatenated_blis_trial_cv": 0.08541812453281221,
+      "repacked_a_microkernel_median_ms": 132.521781,
+      "repacked_a_microkernel_median_gflops": 8.419,
+      "repacked_a_microkernel_trial_cv": 0.18994245194116396,
+      "repacked_a_microkernel_visible_pack_ms": 0.200556,
+      "shared_a_microkernel_median_ms": 112.49148,
+      "shared_a_microkernel_median_gflops": 9.918,
+      "shared_a_microkernel_trial_cv": 0.08850421692444632,
+      "shared_a_microkernel_visible_pack_ms": 0.10326,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 1.1046326618413083,
+      "shared_a_microkernel_vs_concatenated_blis": 0.5079117092976541,
+      "shared_a_microkernel_vs_independent_blis": 0.46502393780008666,
+      "shared_a_microkernel_vs_best_complete_blis": 0.46502393780008666,
+      "concatenated_blis_vs_independent_blis": 0.9155605773356298,
+      "activation_pack_saved_ms": 0.09729600000000001,
+      "activation_pack_saved_fraction_of_repacked": 0.0007341887444147767,
+      "packing_only_ideal_speedup_vs_repacked": 1.0007347281735701
+    },
+    {
+      "case_id": "qkv_decode_m1",
+      "region": "qkv",
+      "phase": "decode_m1",
+      "phase_group": "decode",
+      "m": 1,
+      "k": 896,
+      "branch_n": "896x128x128",
+      "independent_blis_median_ms": 0.618715,
+      "independent_blis_median_gflops": 3.337,
+      "independent_blis_trial_cv": 0.11174838348208026,
+      "concatenated_blis_median_ms": 0.643196,
+      "concatenated_blis_median_gflops": 3.21,
+      "concatenated_blis_trial_cv": 0.2630298347247482,
+      "repacked_a_microkernel_median_ms": 0.744759,
+      "repacked_a_microkernel_median_gflops": 2.772,
+      "repacked_a_microkernel_trial_cv": 0.08436760285464624,
+      "repacked_a_microkernel_visible_pack_ms": 0.008561,
+      "shared_a_microkernel_median_ms": 0.741967,
+      "shared_a_microkernel_median_gflops": 2.782,
+      "shared_a_microkernel_trial_cv": 0.04175276693500812,
+      "shared_a_microkernel_visible_pack_ms": 0.003483,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 1.0179861998588218,
+      "shared_a_microkernel_vs_concatenated_blis": 0.8592121918987202,
+      "shared_a_microkernel_vs_independent_blis": 0.7812072479761939,
+      "shared_a_microkernel_vs_best_complete_blis": 0.7387778585207803,
+      "concatenated_blis_vs_independent_blis": 0.9092134112411184,
+      "activation_pack_saved_ms": 0.005077999999999999,
+      "activation_pack_saved_fraction_of_repacked": 0.00681831303817745,
+      "packing_only_ideal_speedup_vs_repacked": 1.0068651215861972
+    },
+    {
+      "case_id": "qkv_decode_m8",
+      "region": "qkv",
+      "phase": "decode_m8",
+      "phase_group": "decode",
+      "m": 8,
+      "k": 896,
+      "branch_n": "896x128x128",
+      "independent_blis_median_ms": 1.612804,
+      "independent_blis_median_gflops": 10.24,
+      "independent_blis_trial_cv": 0.33784024942932905,
+      "concatenated_blis_median_ms": 1.563121,
+      "concatenated_blis_median_gflops": 10.565,
+      "concatenated_blis_trial_cv": 0.2865351270074115,
+      "repacked_a_microkernel_median_ms": 1.308333,
+      "repacked_a_microkernel_median_gflops": 12.623,
+      "repacked_a_microkernel_trial_cv": 0.35157782466194953,
+      "repacked_a_microkernel_visible_pack_ms": 0.024539,
+      "shared_a_microkernel_median_ms": 1.640379,
+      "shared_a_microkernel_median_gflops": 10.068,
+      "shared_a_microkernel_trial_cv": 0.3279649947806781,
+      "shared_a_microkernel_visible_pack_ms": 0.012514,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 0.8543089429491129,
+      "shared_a_microkernel_vs_concatenated_blis": 0.9702179518119827,
+      "shared_a_microkernel_vs_independent_blis": 0.955335259559418,
+      "shared_a_microkernel_vs_best_complete_blis": 0.8747971997403138,
+      "concatenated_blis_vs_independent_blis": 0.984660464976174,
+      "activation_pack_saved_ms": 0.012024999999999997,
+      "activation_pack_saved_fraction_of_repacked": 0.009191085144225513,
+      "packing_only_ideal_speedup_vs_repacked": 1.0092763448192867
+    },
+    {
+      "case_id": "qkv_prefill_m256",
+      "region": "qkv",
+      "phase": "prefill_m256",
+      "phase_group": "prefill",
+      "m": 256,
+      "k": 896,
+      "branch_n": "896x128x128",
+      "independent_blis_median_ms": 14.065136,
+      "independent_blis_median_gflops": 37.574,
+      "independent_blis_trial_cv": 0.06765502659457713,
+      "concatenated_blis_median_ms": 14.51129,
+      "concatenated_blis_median_gflops": 36.419,
+      "concatenated_blis_trial_cv": 0.11313190324818095,
+      "repacked_a_microkernel_median_ms": 25.364879,
+      "repacked_a_microkernel_median_gflops": 20.835,
+      "repacked_a_microkernel_trial_cv": 0.07895211788401614,
+      "repacked_a_microkernel_visible_pack_ms": 1.10052,
+      "shared_a_microkernel_median_ms": 25.601116,
+      "shared_a_microkernel_median_gflops": 20.643,
+      "shared_a_microkernel_trial_cv": 0.09113146949859437,
+      "shared_a_microkernel_visible_pack_ms": 0.320115,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 1.0117947653318105,
+      "shared_a_microkernel_vs_concatenated_blis": 0.5973838534694887,
+      "shared_a_microkernel_vs_independent_blis": 0.580490304812837,
+      "shared_a_microkernel_vs_best_complete_blis": 0.557167243332563,
+      "concatenated_blis_vs_independent_blis": 0.9717207812723138,
+      "activation_pack_saved_ms": 0.780405,
+      "activation_pack_saved_fraction_of_repacked": 0.030767148544252866,
+      "packing_only_ideal_speedup_vs_repacked": 1.0317438152225669
+    },
+    {
+      "case_id": "qkv_prefill_m64",
+      "region": "qkv",
+      "phase": "prefill_m64",
+      "phase_group": "prefill",
+      "m": 64,
+      "k": 896,
+      "branch_n": "896x128x128",
+      "independent_blis_median_ms": 4.818978,
+      "independent_blis_median_gflops": 27.417,
+      "independent_blis_trial_cv": 0.15414489347835253,
+      "concatenated_blis_median_ms": 5.06967,
+      "concatenated_blis_median_gflops": 26.061,
+      "concatenated_blis_trial_cv": 0.2767234948529218,
+      "repacked_a_microkernel_median_ms": 6.888123,
+      "repacked_a_microkernel_median_gflops": 19.181,
+      "repacked_a_microkernel_trial_cv": 0.22178052041275387,
+      "repacked_a_microkernel_visible_pack_ms": 0.253976,
+      "shared_a_microkernel_median_ms": 6.379363,
+      "shared_a_microkernel_median_gflops": 20.711,
+      "shared_a_microkernel_trial_cv": 0.2043216954079461,
+      "shared_a_microkernel_visible_pack_ms": 0.072922,
+      "shared_a_microkernel_vs_repacked_a_microkernel": 1.1940349284381124,
+      "shared_a_microkernel_vs_concatenated_blis": 0.879212366955864,
+      "shared_a_microkernel_vs_independent_blis": 0.7802841879682366,
+      "shared_a_microkernel_vs_best_complete_blis": 0.7802841879682366,
+      "concatenated_blis_vs_independent_blis": 0.887480905972523,
+      "activation_pack_saved_ms": 0.181054,
+      "activation_pack_saved_fraction_of_repacked": 0.026284954551479407,
+      "packing_only_ideal_speedup_vs_repacked": 1.0269945038585409
+    }
+  ],
+  "packing_reuse_mechanism": {
+    "packing_only_ideal_geomean_speedup": 1.0096663158396546,
+    "packing_only_ideal_maximum_speedup": 1.0317438152225669,
+    "maximum_saved_fraction_of_repacked_time": 0.030767148544252866,
+    "interpretation": "Counterfactual speedup if measured activation-pack savings were removed while all microkernel compute time stayed fixed."
+  },
+  "measurement_quality": {
+    "blis_threads": 1,
+    "cpu_affinity": 10,
+    "variant_interleaving": "per_repeat_rotating_order",
+    "median_trial_cv": 0.10423603681458876,
+    "maximum_trial_cv": 0.35157782466194953,
+    "host_environment": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35"
+  },
+  "persistent_representation": {
+    "median_weight_pack_setup_ms": 33.7220665,
+    "median_weight_concatenation_setup_ms": 25.711928,
+    "maximum_packed_weight_bytes": 34865152,
+    "break_even_runs_vs_concatenated_blis": {
+      "gate_up_decode_m1": 9.820265928852276,
+      "gate_up_decode_m8": null,
+      "gate_up_prefill_m256": null,
+      "gate_up_prefill_m64": null,
+      "qkv_decode_m1": null,
+      "qkv_decode_m8": null,
+      "qkv_prefill_m256": null,
+      "qkv_prefill_m64": null
+    }
+  },
+  "claim_boundary": "This is a native mechanism probe using real BLIS frontend calls and the real BLIS Haswell 6x16 microkernel. It tests whether compiler-visible shared activation packing can beat both repeated packing and a concatenated-weight single-BLIS strong baseline. It does not yet implement an MLIR graph planner, low-precision kernels, a complete Transformer block, or an end-to-end model."
+}

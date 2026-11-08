@@ -1,0 +1,303 @@
+% !TeX root = ../../../graduate.tex
+%% 附录
+
+\begin{thesisappendix}
+
+\section{冻结工作负载与数据划分}
+
+第五章正文说明了工作负载族、数据划分和测量协议，本附录列出进入正式 \texttt{f32} 评估的全部固定形状。形状按 $M\times K\times N$ 记录，\texttt{design}、\texttt{validation} 和 \texttt{holdout} 的划分在性能测量前冻结。“固定预算”列标出进入 B1 至 B4 搜索曲线的 8 个工作负载。该表用于复核样本边界，不增加正文中的性能结论。
+
+\begin{longtable}{
+  @{}
+  >{\raggedright\arraybackslash}p{0.29\textwidth}
+  >{\centering\arraybackslash}p{0.14\textwidth}
+  >{\centering\arraybackslash}p{0.16\textwidth}
+  >{\centering\arraybackslash}p{0.20\textwidth}
+  >{\centering\arraybackslash}p{0.12\textwidth}
+  @{}
+}
+  \caption{正式单精度评估的 36 个冻结工作负载}
+  \label{tab:appendix-f32-workloads} \\
+  \toprule
+  \textbf{工作负载标识} & \textbf{类别} & \textbf{划分} &
+  \textbf{$M\times K\times N$} & \textbf{固定预算} \\
+  \midrule
+  \endfirsthead
+
+  \multicolumn{5}{c}{续表~\thetable} \\
+  \toprule
+  \textbf{工作负载标识} & \textbf{类别} & \textbf{划分} &
+  \textbf{$M\times K\times N$} & \textbf{固定预算} \\
+  \midrule
+  \endhead
+
+  \midrule
+  \multicolumn{5}{r}{续下页}
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  \texttt{sq\_064} & 方阵 & design & $64\times64\times64$ & 否 \\
+  \texttt{sq\_080} & 方阵 & validation & $80\times80\times80$ & 否 \\
+  \texttt{sq\_096} & 方阵 & design & $96\times96\times96$ & 是 \\
+  \texttt{sq\_112} & 方阵 & holdout & $112\times112\times112$ & 否 \\
+  \texttt{sq\_128} & 方阵 & validation & $128\times128\times128$ & 否 \\
+  \texttt{sq\_160} & 方阵 & holdout & $160\times160\times160$ & 否 \\
+  \texttt{sq\_192} & 方阵 & design & $192\times192\times192$ & 是 \\
+  \texttt{sq\_224} & 方阵 & validation & $224\times224\times224$ & 否 \\
+  \texttt{sq\_256} & 方阵 & holdout & $256\times256\times256$ & 否 \\
+  \texttt{ms\_024x128x128} & M 窄 & holdout & $24\times128\times128$ & 否 \\
+  \texttt{ms\_032x192x128} & M 窄 & design & $32\times192\times128$ & 否 \\
+  \texttt{ms\_048x128x192} & M 窄 & design & $48\times128\times192$ & 是 \\
+  \texttt{ms\_064x256x192} & M 窄 & validation & $64\times256\times192$ & 否 \\
+  \texttt{ms\_016x256x096} & M 窄 & holdout & $16\times256\times96$ & 否 \\
+  \texttt{ns\_128x128x024} & N 窄 & holdout & $128\times128\times24$ & 否 \\
+  \texttt{ns\_192x128x032} & N 窄 & design & $192\times128\times32$ & 否 \\
+  \texttt{ns\_128x192x048} & N 窄 & design & $128\times192\times48$ & 是 \\
+  \texttt{ns\_256x128x064} & N 窄 & validation & $256\times128\times64$ & 否 \\
+  \texttt{ns\_096x256x016} & N 窄 & holdout & $96\times256\times16$ & 否 \\
+  \texttt{ks\_128x016x128} & 小 K & holdout & $128\times16\times128$ & 否 \\
+  \texttt{ks\_192x024x128} & 小 K & design & $192\times24\times128$ & 否 \\
+  \texttt{ks\_128x032x192} & 小 K & validation & $128\times32\times192$ & 否 \\
+  \texttt{ks\_160x048x160} & 小 K & design & $160\times48\times160$ & 否 \\
+  \texttt{tail\_065x067x070} & 边界 & holdout & $65\times67\times70$ & 否 \\
+  \texttt{tail\_095x127x130} & 边界 & validation & $95\times127\times130$ & 否 \\
+  \texttt{tail\_126x130x142} & 边界 & design & $126\times130\times142$ & 否 \\
+  \texttt{tail\_190x250x250} & 边界 & design & $190\times250\times250$ & 是 \\
+  \texttt{tail\_250x255x254} & 边界 & holdout & $250\times255\times254$ & 否 \\
+  \texttt{rect\_032x128x256} & 模型矩形 & design & $32\times128\times256$ & 否 \\
+  \texttt{rect\_064x256x192} & 模型矩形 & design & $64\times256\times192$ & 是 \\
+  \texttt{rect\_096x256x128} & 模型矩形 & validation & $96\times256\times128$ & 是 \\
+  \texttt{rect\_128x256x064} & 模型矩形 & design & $128\times256\times64$ & 否 \\
+  \texttt{rect\_032x256x128} & 模型矩形 & holdout & $32\times256\times128$ & 否 \\
+  \texttt{rect\_064x192x256} & 模型矩形 & validation & $64\times192\times256$ & 否 \\
+  \texttt{rect\_128x192x256} & 模型矩形 & design & $128\times192\times256$ & 是 \\
+  \texttt{rect\_192x256x128} & 模型矩形 & holdout & $192\times256\times128$ & 否 \\
+\end{longtable}
+
+\section{外部精确形状与边界压力用例}
+
+i9 与 K230 的外部验证使用表~\ref{tab:appendix-external-workloads} 所列 10 个工作负载。前 8 个来自 Qwen2.5-0.5B 核心投影的 decode 与 prefill 形状，后 2 个在相邻维度上构造，用于覆盖 M/N/K 非整除时的 adapt 路径。Qwen 调用覆盖率只按前 8 个模型形状计算，边界压力用例不计入模型调用频次。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{外部验证的固定精确形状与边界压力用例}
+  \label{tab:appendix-external-workloads}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.31\textwidth}
+    >{\centering\arraybackslash}p{0.16\textwidth}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\centering\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{工作负载标识} & \textbf{阶段} & \textbf{区域} &
+    \textbf{$M\times K\times N$} \\
+    \midrule
+    \texttt{qkv\_decode\_m8} & decode & QKV 投影 & $8\times896\times1152$ \\
+    \texttt{gate\_up\_decode\_m8} & decode & Gate/Up & $8\times896\times9728$ \\
+    \texttt{down\_decode\_m8} & decode & Down 投影 & $8\times4864\times896$ \\
+    \texttt{out\_decode\_m8} & decode & Attention 输出 & $8\times896\times896$ \\
+    \texttt{qkv\_prefill\_m32} & prefill & QKV 投影 & $32\times896\times1152$ \\
+    \texttt{gate\_up\_prefill\_m32} & prefill & Gate/Up & $32\times896\times9728$ \\
+    \texttt{down\_prefill\_m32} & prefill & Down 投影 & $32\times4864\times896$ \\
+    \texttt{out\_prefill\_m32} & prefill & Attention 输出 & $32\times896\times896$ \\
+    \texttt{qkv\_fringe\_m17} & 边界压力 & QKV 邻近形状 & $17\times897\times1153$ \\
+    \texttt{down\_fringe\_m33} & 边界压力 & Down 邻近形状 & $33\times4865\times895$ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Contract 完整 Schema 字段}
+\label{sec:appendix-contract-schema}
+
+表~\ref{tab:appendix-contract-schema} 列出三个受测微内核包中出现的 34 个叶字段。字段集合以冻结的 \path{package_contracts.json} 为真值；“硬”表示字段参与接纳或物化判定，“包内”表示字段决定某个包的实现连接，“审计”表示字段不直接改变候选路径，但用于来源核验和版本失效。Performance Profile 的缓存偏好、候选分数和目标校准不属于本表，也不得通过软分数改写这些硬字段。
+
+\begin{longtable}{
+  @{}
+  >{\raggedright\arraybackslash}p{0.11\textwidth}
+  >{\raggedright\arraybackslash}p{0.25\textwidth}
+  >{\centering\arraybackslash}p{0.09\textwidth}
+  >{\raggedright\arraybackslash}p{0.18\textwidth}
+  >{\raggedright\arraybackslash}p{0.28\textwidth}
+  @{}
+}
+  \caption{Contract Schema 的 34 个叶字段、检查阶段与来源要求}
+  \label{tab:appendix-contract-schema} \\
+  \toprule
+  \textbf{字段组} & \textbf{字段路径} & \textbf{类型} &
+  \textbf{分类与检查阶段} & \textbf{失败动作与来源要求} \\
+  \midrule
+  \endfirsthead
+
+  \multicolumn{5}{c}{续表~\thetable} \\
+  \toprule
+  \textbf{字段组} & \textbf{字段路径} & \textbf{类型} &
+  \textbf{分类与检查阶段} & \textbf{失败动作与来源要求} \\
+  \midrule
+  \endhead
+
+  \midrule
+  \multicolumn{5}{r}{续下页}
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  标识 & \path{id} & string & 审计；Contract 选择 & 重复或失效则停用；registry 与 manifest \\
+  标识 & \path{library} & string & 审计；Contract 选择 & 不匹配则不选择；固定库来源 \\
+  语义 & \path{operation} & string & 硬；任务级 & fallback/reject；payload 与 API \\
+  语义 & \path{dtype} & string & 硬；任务级 & fallback；内核声明与调用方 \\
+  目标 & \path{target.machine} & string & 硬；任务级 & 不选择该 Contract；目标 triple \\
+  目标 & \path{target.architecture} & string & 审计；任务级 & 不选择或标记范围；构建配置 \\
+  目标 & \path{target.required_features} & array & 硬；任务级 & fallback；构建标志与内核指令 \\
+  内核 & \path{kernel.symbol} & string & 硬；链接前 & fallback/reject；对象符号与头文件 \\
+  内核 & \path{kernel.mr} & integer & 硬；候选级 & adapt/fallback；context 与内核 setup \\
+  内核 & \path{kernel.nr} & integer & 硬；候选级 & adapt/fallback；context 与内核 setup \\
+  内核 & \path{kernel.k_step} & integer & 硬；候选级 & adapt/fallback；主循环与 packer \\
+  布局 & \path{layout.a} & string & 硬；候选/物化前 & adapt/fallback；payload 与 packer \\
+  布局 & \path{layout.b} & string & 硬；候选/物化前 & adapt/fallback；payload 与 packer \\
+  布局 & \path{layout.c} & string & 硬；候选/物化前 & fallback；wrapper 与输出语义 \\
+  布局 & \path{layout.inner_stride} & integer & 硬；候选级 & fallback；MemRef 与 wrapper \\
+  Packing & \path{packing.required} & boolean & 硬；路径生成 & fallback；微内核调用路径 \\
+  Packing & \path{packing.schema_id} & string & 硬；路径生成 & fallback；pack kernel 与 adapter \\
+  Packing & \path{packing.panel_order} & string & 硬；IR/运行前 & fallback；packer 与微内核消费顺序 \\
+  边界 & \path{capabilities.mn_tail} & boolean & 硬；路径生成 & adapt/fallback；fringe adapter 测试 \\
+  边界 & \path{capabilities.k_tail} & boolean & 硬；路径生成 & adapt/fallback；K remainder 测试 \\
+  边界 & \path{capabilities.beta_modes} & array & 硬；路径生成/数值 & fallback；wrapper 与 reference \\
+  ABI & \path{abi.schema_id} & string & 硬；物化/链接 & fallback/reject；调用声明与 wrapper \\
+  ABI & \path{abi.auxiliary_schema} & string & 硬；物化/运行 & fallback/reject；辅助结构定义 \\
+  来源 & \path{provenance.source_revision} & string & 审计；加载时 & stale 并停用；版本控制 revision \\
+  来源 & \path{provenance.source_file} & string & 审计；抽取时 & 不得晋升为已核验；源码位置 \\
+  来源 & \path{provenance.source_sha256} & string & 审计；加载时 & stale 并停用；文件内容散列 \\
+  包内 & \path{package_specific.pack_kernel} & string & 包内；结构准备 & fallback；BLIS pack 符号 \\
+  包内 & \path{package_specific.pack_kernels} & array & 包内；结构准备 & fallback；OpenBLAS pack 符号组 \\
+  包内 & \path{package_specific.public_fallback} & string & 硬；安全退化 & 无入口则 reject；公开库 API \\
+  包内 & \path{package_specific.vector_bits} & integer & 包内；目标/物化 & 不匹配则 fallback；ISA 配置与工具链 \\
+  获取 & \path{fact_acquisition.machine_parsed} & integer & 审计；抽取后 & 仅影响证据状态；抽取日志 \\
+  获取 & \path{fact_acquisition.machine_derived} & integer & 审计；抽取后 & 仅影响证据状态；派生规则 \\
+  获取 & \path{fact_acquisition.manual_cross_check} & integer & 审计；签核时 & 未核验则保持 pending；签核记录 \\
+  获取 & \path{fact_acquisition.manual_only} & integer & 审计；签核时 & 不得伪装为机器抽取；人工证据记录 \\
+\end{longtable}
+
+三个包共享 31 个叶字段。BLIS 包各使用单个 \texttt{pack\_kernel}，OpenBLAS RVV 包使用 \texttt{pack\_kernels} 和 \texttt{vector\_bits}，由此得到并集 34、交集 31。这个差异说明共享 Schema 允许包内字段扩展，不表示 OpenBLAS 已复用 BLIS 生成器。
+
+\section{Compatibility Checker 稳定 Reason Code}
+\label{sec:appendix-reason-codes}
+
+表~\ref{tab:appendix-reason-codes} 与冻结的 \path{experiments/chapter4_space/data/reason_codes.json} 一一对应。默认动作是当前实现的安全路径，不是所有未来 adapter 的永久规定；当 adapter capability 变化时，必须同时更新 Contract revision、reason 表与回归测试。
+
+\begin{longtable}{
+  @{}
+  >{\raggedright\arraybackslash}p{0.30\textwidth}
+  >{\raggedright\arraybackslash}p{0.17\textwidth}
+  >{\centering\arraybackslash}p{0.13\textwidth}
+  >{\raggedright\arraybackslash}p{0.32\textwidth}
+  @{}
+}
+  \caption{Compatibility Checker 的 19 个稳定 reason code}
+  \label{tab:appendix-reason-codes} \\
+  \toprule
+  \textbf{Code} & \textbf{检查维度} & \textbf{默认动作} & \textbf{含义} \\
+  \midrule
+  \endfirsthead
+
+  \multicolumn{4}{c}{续表~\thetable} \\
+  \toprule
+  \textbf{Code} & \textbf{检查维度} & \textbf{默认动作} & \textbf{含义} \\
+  \midrule
+  \endhead
+
+  \midrule
+  \multicolumn{4}{r}{续下页}
+  \endfoot
+
+  \bottomrule
+  \endlastfoot
+
+  \path{DIRECT_CONTRACT_MATCH} & 全部 & direct & 候选满足所有已检查的目标 Contract 条件 \\
+  \texttt{MN\_TAIL\_ADAPTER} & tail & adapt & M/N 尾块需要已声明的有限适配器 \\
+  \texttt{K\_REMAINDER\_ADAPTER} & K 约束 & adapt & K 余数需要已声明的 remainder 适配器 \\
+  \texttt{NO\_MATCHING\_CONTRACT} & Contract 选择 & fallback & 任务上下文没有匹配的目标 Contract \\
+  \texttt{DTYPE\_MISMATCH} & dtype & fallback & 任务数据类型与所选 Contract 不同 \\
+  \texttt{ISA\_FEATURE\_MISSING} & ISA & fallback & 目标缺少一个或多个必需指令特性 \\
+  \texttt{MR\_NR\_MISMATCH} & MR/NR & fallback & tile 不能容纳整数个 MR$\times$NR 微块 \\
+  \texttt{VECTOR\_LANE\_MISMATCH} & vectorization & fallback & 通用向量 tile 不是 Contract lane 的整数倍 \\
+  \texttt{PACKING\_REQUIRED} & packing & fallback & 目标路径需要 packed A/B，而候选未请求 packing \\
+  \texttt{PACK\_LAYOUT\_MISMATCH} & layout & fallback & 请求的 panel layout 与目标语义不一致 \\
+  \texttt{STRIDE\_MISMATCH} & stride & fallback & 输入或输出 stride 与目标接口不兼容 \\
+  \texttt{ALIGNMENT\_UNAVAILABLE} & alignment & fallback & 必需对齐既未证明，也不能由 adapter 提供 \\
+  \path{CALL_CONVENTION_MISMATCH} & call convention & fallback & 当前调用接口与 Contract ABI 不同 \\
+  \makecell[l]{\texttt{OUTPUT\_LAYOUT\_}\\\texttt{MISMATCH}} & layout & fallback & 输出布局不兼容且没有转换路径 \\
+  \texttt{UNSUPPORTED\_OPERATION} & payload & reject & payload 不是当前支持的 GEMM 形式 \\
+  \texttt{NON\_POSITIVE\_TILE} & Transform & reject & 至少一个 tile size 非正 \\
+  \texttt{TILE\_EXCEEDS\_EXTENT} & Transform & reject & 静态 tile 超过冻结策略允许的任务 extent \\
+  \path{TRANSFORM_PRECONDITION_FAILED} & Transform & reject & 生成的 Transform 序列不满足结构前置条件 \\
+  \makecell[l]{\texttt{NO\_EXECUTABLE\_}\\\texttt{FALLBACK}} & fallback & reject & direct、adapt 与通用 fallback 均不可用 \\
+\end{longtable}
+
+\section{实验 Artifact、复现入口与可用性}
+\label{sec:appendix-artifact-availability}
+
+\subsection{机器可读证据与最小入口}
+
+论文工程以 \path{jlq/thesis/experiments/} 为实验根目录。表~\ref{tab:appendix-artifact-map} 给出相对于该根目录的定位方式；正文数字以冻结汇总和 CSV 为准，报告 Markdown 只用于阅读，不替代机器可读真值。
+
+\begin{longtable}{
+  @{}
+  >{\raggedright\arraybackslash}p{0.20\textwidth}
+  >{\raggedright\arraybackslash}p{0.38\textwidth}
+  >{\raggedright\arraybackslash}p{0.33\textwidth}
+  @{}
+}
+  \caption{主要实验 artifact 的相对路径与用途}
+  \label{tab:appendix-artifact-map} \\
+  \toprule
+  \textbf{对象} & \textbf{相对路径} & \textbf{用途} \\
+  \midrule
+  \endfirsthead
+  \multicolumn{3}{c}{续表~\thetable} \\
+  \toprule
+  \textbf{对象} & \textbf{相对路径} & \textbf{用途} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{3}{r}{续下页}
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  总入口 & \path{EXPERIMENTS_DETAILED_GUIDE.md} & 22 个证据条目的设备、协议、结果和复现层级 \\
+  Contract 配置 & \path{chapter6_contract_space_validation/data/} & 三包 Contract、变异 oracle 与冻结协议 \\
+  E1--E4 汇总 & \path{chapter6_contract_space_validation/processed/summary.json} & 接纳、空间、复用和成本的机器可读汇总 \\
+  规范化池 & \path{.../processed/e2_normalized_pool.csv} & 8$\times$28 个候选的来源、路径与 alias 证据 \\
+  BaCO/random 对照 & \path{.../processed/e2_baco_random_summary.json} & 同池唯一预算、配对区间和 callback 披露 \\
+  来源指纹 & \path{.../provenance/manifest.json} & 输入文件 SHA-256、运行时与生成输出清单 \\
+  图表源数据 & \path{nwputhesis/content/figures/source_data_chapter5_*.csv} & 第五章定量图的可追溯源数据 \\
+  证据审计 & \path{FINAL_EXPERIMENT_AUDIT.md}；\path{PAPER_EVIDENCE_CATALOG.md} & 正文、辅助、附录与参考材料分级 \\
+\end{longtable}
+
+在已安装论文依赖和 BaCO 3.0 的环境中，最小离线重建命令为：
+
+\begin{verbatim}
+cd jlq/thesis/experiments/chapter6_contract_space_validation
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  python3 scripts/run_normalized_baco_replay.py --analyze-only
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+  python3 scripts/run_same_pool_random_baseline.py --analyze-only
+python3 scripts/run_all.py
+python3 -m unittest discover -s tests -v
+python3 scripts/audit_documentation.py
+\end{verbatim}
+
+这些命令重建静态分类、冻结语料分析、同池搜索对照、汇总和文档审计，不进行候选重新编译或硬件计时。去掉 replay 的 \texttt{--analyze-only} 会重新执行离线 BaCO，但仍只读取冻结 objective。i9 外部精确形状结果需要冻结的 Ubuntu 20.04 x86\_64 离线包；K230 结果需要物理 C908/RT-Smart 开发板和串口导入流程。被证据目录标为 \texttt{appendix\_only} 或 \texttt{reference\_only} 的历史材料不支撑正文核心结论。
+
+\subsection{代码和数据可用性声明}
+
+支撑本文结论的实验代码、冻结配置、处理后测量表、搜索轨迹、图表源数据和 provenance 当前保存在上述论文工程相对路径中。外部库源码按各自许可证和固定 revision 获取，不在本声明中重新分发。本文不涉及人类参与者、隐私或受限数据。
+
+\textbf{归档待办：}当前 \texttt{jlq} 工程没有已配置的公开远程仓库、长期归档 DOI 或机构库登录号，因此本节只提供工程内复现映射，不声明这些 artifact 已公开可访问。送审或答辩材料冻结前，应将表~\ref{tab:appendix-artifact-map} 所列代码、数据、README、许可证与 manifest 存入学校机构库或通用科研仓库，并用实际永久链接和版本标识替换本段；不得填写尚未生成的 URL 或 DOI。
+
+\end{thesisappendix}

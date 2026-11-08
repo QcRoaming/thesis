@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter3_multisource.openblas_runtime",
+  "status": "pass",
+  "library": "/buddy-mlir/jlq/thesis/third_party/OpenBLAS/libopenblas.a",
+  "library_sha256": "586ed301abb9ea9710ee64631a884be042a7ca665309ebcdc8bf8875662a3661",
+  "source_revision": "b338322e9afc063d95e2c117e85bedf28213295a",
+  "build_command": [
+    "make",
+    "TARGET=HASWELL",
+    "DYNAMIC_ARCH=0",
+    "NOFORTRAN=1",
+    "NO_LAPACK=1",
+    "ONLY_CBLAS=1",
+    "BUILD_SINGLE=1",
+    "USE_THREAD=0",
+    "NUM_THREADS=1",
+    "-j8"
+  ],
+  "compile_command": [
+    "gcc",
+    "-O3",
+    "-march=haswell",
+    "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/runtime/openblas_sgemm_probe.c",
+    "-I",
+    "/buddy-mlir/jlq/thesis/third_party/OpenBLAS",
+    "/buddy-mlir/jlq/thesis/third_party/OpenBLAS/libopenblas.a",
+    "-lm",
+    "-lpthread",
+    "-o",
+    "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/build/openblas_haswell/openblas_sgemm_probe"
+  ],
+  "shape_count": 4,
+  "trial_count": 28,
+  "correct_count": 28,
+  "shapes": [
+    {
+      "m": 63,
+      "n": 65,
+      "k": 67,
+      "median_gflops": 45.2561181,
+      "trial_count": 7,
+      "correct": true
+    },
+    {
+      "m": 192,
+      "n": 256,
+      "k": 256,
+      "median_gflops": 46.6775434,
+      "trial_count": 7,
+      "correct": true
+    },
+    {
+      "m": 257,
+      "n": 129,
+      "k": 193,
+      "median_gflops": 59.6724643,
+      "trial_count": 7,
+      "correct": true
+    },
+    {
+      "m": 512,
+      "n": 512,
+      "k": 512,
+      "median_gflops": 55.0803713,
+      "trial_count": 7,
+      "correct": true
+    }
+  ]
+}

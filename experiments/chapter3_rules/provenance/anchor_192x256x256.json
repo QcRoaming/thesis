@@ -1,0 +1,55 @@
+{
+  "case_id": "anchor_192x256x256_f32",
+  "source": {
+    "file": "config/haswell/bli_cntx_init_haswell.c",
+    "line": 54,
+    "symbol": "bli_sgemm_haswell_asm_6x16"
+  },
+  "raw_facts": {
+    "kernel_symbol": "bli_sgemm_haswell_asm_6x16",
+    "mr": 6,
+    "nr": 16,
+    "mc": 168,
+    "kc": 256,
+    "nc": 4080,
+    "pack_kernel": "bli_spackm_haswell_asm_6x16"
+  },
+  "normalized_fact_ids": [
+    "blis.haswell.gemm.f32.mr",
+    "blis.haswell.gemm.f32.nr",
+    "blis.haswell.gemm.f32.mc",
+    "blis.haswell.gemm.f32.kc",
+    "blis.haswell.gemm.f32.nc"
+  ],
+  "contract_id": "haswell_f32_gemm_6x16",
+  "rule_ids": [
+    "register_blocking_matches_contract",
+    "cache_blocking_bounded_by_shape",
+    "packing_required_for_direct_kernel_path",
+    "vectorization_matches_target_isa",
+    "explicit_tail_or_fallback"
+  ],
+  "task": {
+    "operation": "linalg.matmul",
+    "dtype": "f32",
+    "m": 192,
+    "k": 256,
+    "n": 256
+  },
+  "candidate_domain": {
+    "tile_m": "multiples of 6",
+    "tile_n": "multiples of 16",
+    "tile_k": "bounded by 256"
+  },
+  "transform_parameters": {
+    "tile_m": 24,
+    "tile_n": 32,
+    "tile_k": 64,
+    "vectorize": true,
+    "packing_required_for_direct": true
+  },
+  "predicted_contract_path": "direct",
+  "observed_preliminary_path": "fallback",
+  "observed_microkernel_replaced": "false",
+  "boundary_note": "The preliminary Transform template does not implement packing or BLIS replacement, so a contract-direct candidate is observed as fallback."
+}

@@ -1,0 +1,25 @@
+schema_version: 1
+seed: 17
+samples_per_shape: 6
+policy_rejects_per_shape: 2
+warmups: 1
+repeats: 3
+inner_iters: 3
+stack_limit_kb: 65536
+cpu_affinity: 0
+dtype: f32
+shapes:
+  - {id: square_64, m: 64, k: 64, n: 64, role: small_square}
+  - {id: square_96, m: 96, k: 96, n: 96, role: small_square}
+  - {id: square_128, m: 128, k: 128, n: 128, role: medium_square}
+  - {id: square_192, m: 192, k: 192, n: 192, role: medium_square}
+  - {id: m64_k32_n256, m: 64, k: 32, n: 256, role: shallow_k_wide}
+  - {id: m128_k256_n64, m: 128, k: 256, n: 64, role: rectangular_tall}
+  - {id: m32_k256_n256, m: 32, k: 256, n: 256, role: small_m_projection}
+  - {id: anchor_192x256x256, m: 192, k: 256, n: 256, role: provenance_anchor}
+anchor_candidate:
+  shape_id: anchor_192x256x256
+  tile_m: 24
+  tile_n: 32
+  tile_k: 64
+  vectorize: true

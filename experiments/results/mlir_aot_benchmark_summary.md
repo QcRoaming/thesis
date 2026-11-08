@@ -1,0 +1,24 @@
+# MLIR AOT MatMul Benchmark
+
+Generated at: 2026-07-01T06:57:15Z
+
+- CPU: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz
+- Compiler: clang version 21.0.0git
+- Cases: /buddy-mlir/jlq/thesis/experiments/config/aot_cases.csv
+- Case filter: .*
+- Stack limit: 65536 KiB
+
+```csv
+case,shape,schedule,tile_m,tile_n,tile_k,warmups,repeats,inner_iters,stack_limit_kb,median_ms,min_ms,max_ms,mean_ms,stddev_ms,p90_ms,gflops,max_abs_diff,max_rel_diff,checksum,output_aliases_c,status,lowering_ms,native_compile_ms,llvm_ir_bytes,executable_bytes
+matmul_128_default,128x128x128,default,0,0,0,3,11,5,65536,2.429496,2.065540,3.444761,2.461161,0.344362,2.588397,1.726,0.00000054,0.00047549,-3.11505761,1,PASS,57,1668,7073,26136
+matmul_128_tile_16_16_32,128x128x128,tile,16,16,32,3,11,5,65536,1.022319,0.857639,1.803524,1.099328,0.260995,1.326103,4.103,0.00000061,0.00039948,-3.11501565,1,PASS,139,2700,168777,120344
+matmul_128_tile_32_32_32,128x128x128,tile,32,32,32,3,11,5,65536,1.044615,0.931599,1.389915,1.077935,0.139361,1.238293,4.015,0.00000061,0.00039948,-3.11501565,1,PASS,323,8947,466146,415256
+matmul_256_default,256x256x256,default,0,0,0,3,11,5,65536,23.860638,22.404364,25.193062,23.836426,0.849665,24.912812,1.406,0.00000083,0.00052111,2.96538857,1,PASS,51,1543,7073,26136
+matmul_256_tile_16_16_32,256x256x256,tile,16,16,32,3,11,5,65536,9.954167,8.853645,11.169309,10.009496,0.801447,11.099948,3.371,0.00000107,0.00027640,2.96633828,1,PASS,154,2697,168777,120344
+matmul_256_tile_32_32_32,256x256x256,tile,32,32,32,3,11,5,65536,9.506215,8.335388,13.138805,9.853588,1.444285,12.170614,3.530,0.00000107,0.00027640,2.96633828,1,PASS,324,9151,466146,415256
+```
+
+The timed region calls the AOT-compiled MLIR kernel only. Input filling,
+reference computation, output clearing, and correctness checks are excluded.
+The explicit stack limit is recorded because the generic multi-dimensional
+vector-to-LLVM lowering currently emits loop-local stack temporaries.

@@ -1,0 +1,494 @@
+#!/usr/bin/env Rscript
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+  library(jsonlite)
+  library(patchwork)
+  library(png)
+  library(readr)
+  library(svglite)
+})
+
+args <- commandArgs(trailingOnly = TRUE)
+script_arg <- commandArgs(trailingOnly = FALSE)
+script_path <- sub("^--file=", "", script_arg[grep("^--file=", script_arg)])
+script_dir <- dirname(normalizePath(script_path))
+project_dir <- normalizePath(file.path(script_dir, ".."))
+if (length(args) == 2 && args[1] == "--project") {
+  project_dir <- normalizePath(args[2])
+}
+
+figure_dir <- file.path(project_dir, "figures")
+dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+
+palette <- c(
+  ink = "#25323B",
+  muted = "#68757D",
+  grid = "#D8DEE2",
+  fact = "#CFE3E7",
+  contract = "#EEC9C4",
+  rule = "#DDD7EA",
+  candidate = "#DCE7CF",
+  signal = "#2C7C78",
+  accent = "#C66A3D",
+  warning = "#C79232",
+  reject = "#B85C55",
+  soft = "#75669B"
+)
+
+theme_chapter3 <- function(base_size = 7.2) {
+  theme_classic(base_size = base_size, base_family = "sans") +
+    theme(
+      axis.line = element_line(linewidth = 0.35, colour = palette[["ink"]]),
+      axis.ticks = element_line(linewidth = 0.35, colour = palette[["ink"]]),
+      axis.text = element_text(colour = palette[["ink"]]),
+      axis.title = element_text(colour = palette[["ink"]]),
+      legend.title = element_blank(),
+      legend.text = element_text(size = base_size - 0.5),
+      legend.key.height = grid::unit(3.0, "mm"),
+      panel.grid.major.y = element_line(linewidth = 0.25, colour = palette[["grid"]]),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(size = base_size + 0.4, face = "bold", hjust = 0),
+      plot.tag = element_text(size = 9, face = "bold"),
+      plot.margin = margin(4, 5, 4, 5)
+    )
+}
+
+save_pub_r <- function(plot, stem, width_mm, height_mm, dpi = 600) {
+  width_in <- width_mm / 25.4
+  height_in <- height_mm / 25.4
+  svg_path <- file.path(figure_dir, paste0(stem, ".svg"))
+  pdf_path <- file.path(figure_dir, paste0(stem, ".pdf"))
+  tiff_path <- file.path(figure_dir, paste0(stem, ".tiff"))
+  png_path <- file.path(figure_dir, paste0(stem, ".png"))
+
+  svglite::svglite(svg_path, width = width_in, height = height_in)
+  print(plot)
+  dev.off()
+
+  grDevices::cairo_pdf(pdf_path, width = width_in, height = height_in,
+                       family = "sans")
+  print(plot)
+  dev.off()
+
+  ragg::agg_tiff(tiff_path, width = width_in, height = height_in,
+                 units = "in", res = dpi, background = "white")
+  print(plot)
+  dev.off()
+
+  ragg::agg_png(png_path, width = width_in, height = height_in,
+                units = "in", res = 300, background = "white")
+  print(plot)
+  dev.off()
+}
+
+panel_theme <- theme_chapter3() +
+  theme(plot.title.position = "plot")
+
+make_figure_3_1 <- function() {
+  raw <- readr::read_csv(
+    file.path(project_dir, "raw", "preliminary_aot.csv"),
+    show_col_types = FALSE
+  )
+  convergence <- readr::read_csv(
+    file.path(project_dir, "processed", "preliminary_best_so_far.csv"),
+    show_col_types = FALSE
+  )
+
+  status_levels <- c(
+    "STATIC_REJECT", "COMPILE_FAIL", "CORRECTNESS_FAIL",
+    "FALLBACK_PASS", "REPLACED_PASS"
+  )
+  status_labels <- c(
+    STATIC_REJECT = "Reject",
+    COMPILE_FAIL = "Compile fail",
+    CORRECTNESS_FAIL = "Correctness fail",
+    FALLBACK_PASS = "Fallback pass",
+    REPLACED_PASS = "Replaced pass"
+  )
+  status_colors <- c(
+    STATIC_REJECT = palette[["reject"]],
+    COMPILE_FAIL = "#AEB7BD",
+    CORRECTNESS_FAIL = "#8F6870",
+    FALLBACK_PASS = palette[["signal"]],
+    REPLACED_PASS = "#5D8B58"
+  )
+
+  outcomes <- raw %>%
+    filter(candidate_kind != "baseline") %>%
+    count(status, name = "n") %>%
+    mutate(
+      status = factor(status, levels = status_levels),
+      fraction = n / sum(n),
+      label = ifelse(
+        fraction >= 0.08,
+        paste0(status_labels[as.character(status)], "\n", round(100 * fraction), "% (n=", n, ")"),
+        ""
+      )
+    )
+
+  p_a <- ggplot(outcomes, aes(x = 1, y = fraction, fill = status)) +
+    geom_col(width = 0.58, colour = "white", linewidth = 0.35) +
+    geom_text(aes(label = label), position = position_stack(vjust = 0.5),
+              colour = "white", size = 1.85, fontface = "bold") +
+    coord_flip() +
+    scale_fill_manual(values = status_colors, labels = status_labels,
+                      drop = FALSE) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                       expand = expansion(mult = c(0, 0.025))) +
+    labs(x = NULL, y = "Fraction of sampled candidates",
+         title = "Observed outcomes") +
+    panel_theme +
+    theme(
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      axis.line.y = element_blank(),
+      panel.grid = element_blank(),
+      legend.position = "none"
+    )
+
+  shape_order <- unique(raw$shape_id)
+  shape_labels <- c(
+    square_64 = "64^3",
+    square_96 = "96^3",
+    square_128 = "128^3",
+    square_192 = "192^3",
+    m64_k32_n256 = "64x32x256",
+    m128_k256_n64 = "128x256x64",
+    m32_k256_n256 = "32x256x256",
+    anchor_192x256x256 = "192x256x256"
+  )
+  measured <- raw %>%
+    filter(candidate_kind == "sample", status %in% c("FALLBACK_PASS", "REPLACED_PASS")) %>%
+    mutate(
+      shape_id = factor(shape_id, levels = shape_order),
+      vectorize = factor(vectorize, levels = c(FALSE, TRUE),
+                         labels = c("vectorize=false", "vectorize=true"))
+    )
+
+  p_b <- ggplot(measured, aes(x = shape_id, y = normalized_to_shape_best)) +
+    geom_boxplot(width = 0.52, outlier.shape = NA, linewidth = 0.35,
+                 fill = palette[["fact"]], colour = palette[["signal"]]) +
+    geom_point(aes(colour = vectorize),
+               position = position_jitter(width = 0.13, height = 0, seed = 17),
+               size = 1.5, alpha = 0.95) +
+    geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.35,
+               colour = palette[["muted"]]) +
+    scale_colour_manual(values = c(
+      "vectorize=false" = palette[["signal"]],
+      "vectorize=true" = palette[["accent"]]
+    )) +
+    scale_x_discrete(labels = shape_labels) +
+    scale_y_continuous(limits = c(0, 1.06), breaks = seq(0, 1, 0.25)) +
+    labs(x = "GEMM shape (M x K x N)",
+         y = "Performance / best sampled performance",
+         title = "Measured candidate performance") +
+    panel_theme +
+    theme(
+      axis.text.x = element_text(angle = 38, hjust = 1, vjust = 1),
+      legend.position = "inside",
+      legend.position.inside = c(0.76, 0.12),
+      legend.background = element_rect(fill = scales::alpha("white", 0.82), colour = NA)
+    )
+
+  convergence_summary <- convergence %>%
+    group_by(iteration) %>%
+    summarise(
+      median = median(best_so_far),
+      q25 = quantile(best_so_far, 0.25),
+      q75 = quantile(best_so_far, 0.75),
+      .groups = "drop"
+    )
+
+  source_data <- bind_rows(
+    raw %>%
+      transmute(
+        panel = "a_b", shape_id, case_id, candidate_kind, status, vectorize,
+        normalized_to_shape_best, speedup_vs_default, native_compile_ms,
+        microkernel_replaced, iteration = NA_integer_,
+        normalized_score = NA_real_, best_so_far = NA_real_
+      ),
+    convergence %>%
+      transmute(
+        panel = "c", shape_id, case_id, candidate_kind = NA_character_,
+        status = NA_character_, vectorize = NA,
+        normalized_to_shape_best = NA_real_, speedup_vs_default = NA_real_,
+        native_compile_ms = NA_real_, microkernel_replaced = NA,
+        iteration, normalized_score, best_so_far
+      )
+  )
+  readr::write_csv(source_data, file.path(figure_dir, "source_data_fig3-1.csv"))
+
+  p_c <- ggplot(convergence_summary, aes(x = iteration, y = median)) +
+    geom_ribbon(aes(ymin = q25, ymax = q75), fill = palette[["fact"]], alpha = 0.95) +
+    geom_line(colour = palette[["signal"]], linewidth = 0.75) +
+    geom_point(colour = palette[["signal"]], size = 1.4) +
+    scale_x_continuous(breaks = sort(unique(convergence_summary$iteration))) +
+    scale_y_continuous(limits = c(0, 1.03), breaks = seq(0, 1, 0.25)) +
+    labs(x = "Measurement budget", y = "Best-so-far (normalized)",
+         title = "Small-budget convergence") +
+    panel_theme
+
+  figure <- (p_a / p_c | p_b) +
+    plot_layout(widths = c(0.84, 1.55), heights = c(0.9, 1.1))
+
+  p_a <- p_a + labs(tag = "a")
+  p_b <- p_b + labs(tag = "b")
+  p_c <- p_c + labs(tag = "c")
+  figure <- (p_a / p_c | p_b) +
+    plot_layout(widths = c(0.84, 1.55), heights = c(0.9, 1.1))
+
+  save_pub_r(figure, "fig3-1_preliminary_distribution", 183, 112)
+}
+
+box_layer <- function(nodes) {
+  list(
+    geom_rect(
+      data = nodes,
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = fill),
+      inherit.aes = FALSE, colour = palette[["ink"]], linewidth = 0.35
+    ),
+    geom_text(
+      data = nodes,
+      aes(x = (xmin + xmax) / 2, y = title_y, label = title),
+      inherit.aes = FALSE, size = 2.2, lineheight = 0.95,
+      fontface = "bold", colour = palette[["ink"]]
+    ),
+    geom_text(
+      data = nodes,
+      aes(x = (xmin + xmax) / 2, y = body_y, label = body),
+      inherit.aes = FALSE, size = 1.75, lineheight = 1.05, colour = palette[["ink"]]
+    ),
+    scale_fill_identity()
+  )
+}
+
+edge_layer <- function(edges) {
+  geom_segment(
+    data = edges,
+    aes(x = x, y = y, xend = xend, yend = yend,
+        colour = kind, linetype = kind),
+    inherit.aes = FALSE, linewidth = 0.52,
+    arrow = grid::arrow(length = grid::unit(2.0, "mm"), type = "closed")
+  )
+}
+
+diagram_theme <- theme_void(base_family = "sans") +
+  theme(plot.margin = margin(5, 5, 5, 5), plot.tag = element_text(size = 9, face = "bold"))
+
+make_figure_3_2 <- function() {
+  hard_nodes <- tibble::tribble(
+    ~xmin, ~xmax, ~ymin, ~ymax, ~title_y, ~body_y, ~title, ~body, ~fill,
+    0.02, 0.22, 0.60, 0.91, 0.84, 0.70, "BLIS\nfacts", "6x16 / 6x8\npacking + ABI", palette[["fact"]],
+    0.02, 0.22, 0.09, 0.40, 0.34, 0.19, "OpenBLAS\nprofile", "8x4 / 8x8\nfrontend only", palette[["fact"]],
+    0.31, 0.57, 0.60, 0.91, 0.84, 0.70, "Validated BLIS\nContracts", "f32 6x16 / f64 6x8\nlayout / call ABI", palette[["contract"]],
+    0.31, 0.57, 0.09, 0.40, 0.34, 0.19, "Conflict and\nisolation record", "MR-NR / blocking\nABI not integrated", palette[["rule"]],
+    0.72, 0.98, 0.49, 0.81, 0.74, 0.58, "Selected BLIS\nbackend", "one callable ABI\ndirect / adapt /\nfallback path", palette[["candidate"]]
+  )
+  hard_edges <- tibble::tribble(
+    ~x, ~y, ~xend, ~yend, ~kind,
+    0.22, 0.755, 0.31, 0.755, "hard",
+    0.22, 0.245, 0.31, 0.245, "soft",
+    0.57, 0.755, 0.72, 0.65, "hard"
+  )
+  soft_nodes <- tibble::tribble(
+    ~xmin, ~xmax, ~ymin, ~ymax, ~title_y, ~body_y, ~title, ~body, ~fill,
+    0.02, 0.30, 0.34, 0.67, 0.60, 0.45, "BLIS-derived\nsoft score", "active static score\nsix family-score\ninteractions", palette[["fact"]],
+    0.37, 0.65, 0.34, 0.67, 0.60, 0.45, "f64 target\nmeasurements", "367 design rows\n224 validation rows\nsame candidate pool", palette[["rule"]],
+    0.72, 0.98, 0.34, 0.67, 0.60, 0.45, "Target-data\nordering", "search priority\nuncertainty\nABI unchanged", palette[["candidate"]]
+  )
+  soft_edges <- tibble::tribble(
+    ~x, ~y, ~xend, ~yend, ~kind,
+    0.30, 0.505, 0.37, 0.505, "soft",
+    0.65, 0.505, 0.72, 0.505, "soft"
+  )
+
+  p_hard <- ggplot() +
+    box_layer(hard_nodes) +
+    edge_layer(hard_edges) +
+    annotate("text", x = 0.5, y = 0.97,
+             label = "Backend-specific hard compatibility",
+             size = 2.6, fontface = "bold", colour = palette[["ink"]]) +
+    scale_colour_manual(values = c(hard = palette[["ink"]], soft = palette[["soft"]]), guide = "none") +
+    scale_linetype_manual(values = c(hard = "solid", soft = "dashed"), guide = "none") +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
+    diagram_theme +
+    labs(tag = "a")
+
+  p_soft <- ggplot() +
+    box_layer(soft_nodes) +
+    edge_layer(soft_edges) +
+    annotate("text", x = 0.5, y = 0.97,
+             label = "Target-dependent performance knowledge",
+             size = 2.6, fontface = "bold", colour = palette[["soft"]]) +
+    annotate("text", x = 0.5, y = 0.16,
+             label = "Frozen result: Expert+Data showed no clear gain over Data-only",
+             size = 2.05, colour = palette[["muted"]]) +
+    scale_colour_manual(values = c(hard = palette[["ink"]], soft = palette[["soft"]]), guide = "none") +
+    scale_linetype_manual(values = c(hard = "solid", soft = "dashed"), guide = "none") +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
+    diagram_theme +
+    labs(tag = "b")
+
+  plot <- (p_hard | p_soft) +
+    plot_layout(widths = c(1.15, 1)) +
+    plot_annotation(theme = theme(plot.background = element_rect(fill = "white", colour = NA))) &
+    theme(
+      plot.background = element_rect(fill = "white", colour = NA),
+      panel.background = element_rect(fill = "white", colour = NA)
+    )
+
+  save_pub_r(plot, "fig3-2_fact_contract_rule_boundary", 183, 88)
+}
+
+make_figure_3_3 <- function() {
+  nodes <- tibble::tribble(
+    ~xmin, ~xmax, ~ymin, ~ymax, ~title_y, ~body_y, ~title, ~body, ~fill,
+    0.02, 0.17, 0.37, 0.70, 0.63, 0.49, "Evidence", "source code\nbuild flags\nmeasurements", palette[["fact"]],
+    0.22, 0.37, 0.37, 0.70, 0.63, 0.49, "Extract", "active branch\nfield mapping\nderivation", "#DDE8ED",
+    0.42, 0.57, 0.37, 0.70, 0.63, 0.49, "Verify", "cross-check\nhuman signoff\nambiguity log", "#F3E5D0",
+    0.62, 0.77, 0.37, 0.70, 0.63, 0.49, "Normalize", "Fact\nContract\nRule", palette[["rule"]],
+    0.82, 0.98, 0.37, 0.70, 0.63, 0.49, "Consume", "candidate path\nTransform params\ndecision trace", palette[["candidate"]]
+  )
+  edges <- tibble::tibble(
+    x = c(0.17, 0.37, 0.57, 0.77), y = rep(0.535, 4),
+    xend = c(0.22, 0.42, 0.62, 0.82), yend = rep(0.535, 4), kind = "hard"
+  )
+  feedback <- tibble::tribble(
+    ~x, ~y, ~xend, ~yend, ~kind,
+    0.90, 0.37, 0.90, 0.20, "soft",
+    0.90, 0.20, 0.68, 0.20, "soft",
+    0.68, 0.20, 0.68, 0.37, "soft"
+  )
+
+  plot <- ggplot() +
+    box_layer(nodes) +
+    edge_layer(bind_rows(edges, feedback)) +
+    annotate("text", x = 0.5, y = 0.88,
+             label = "Every normalized field retains source, scope, evidence and review state",
+             size = 2.8, fontface = "bold", colour = palette[["ink"]]) +
+    annotate("text", x = 0.79, y = 0.13,
+             label = "target measurements update ordering only; hard paths remain fixed",
+             size = 2.25, colour = palette[["soft"]]) +
+    annotate("text", x = 0.5, y = 0.04,
+             label = "E1 direct source  |  E2 corroborated  |  E3 derived  |  E4 target experiment  |  E5 uncalibrated transfer",
+             size = 2.15, colour = palette[["muted"]]) +
+    scale_colour_manual(values = c(hard = palette[["ink"]], soft = palette[["soft"]]), guide = "none") +
+    scale_linetype_manual(values = c(hard = "solid", soft = "dashed"), guide = "none") +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
+    diagram_theme
+
+  save_pub_r(plot, "fig3-3_evidence_normalization_flow", 183, 80)
+}
+
+make_figure_3_4 <- function() {
+  provenance <- jsonlite::read_json(
+    file.path(project_dir, "provenance", "anchor_192x256x256.json"),
+    simplifyVector = TRUE
+  )
+  integrated <- jsonlite::read_json(
+    file.path(project_dir, "..", "chapter4_5_integrated", "processed", "integrated_summary.json"),
+    simplifyVector = TRUE
+  )
+  integrated_anchor <- integrated$path_matrix$rows %>%
+    filter(case_id == "direct_anchor") %>%
+    slice(1)
+
+  source_rows <- data.frame(
+    stage = c("source", "fact", "contract", "candidate", "preliminary", "integrated"),
+    contract_eligibility = c(NA, NA, NA, "direct", "direct", "direct"),
+    predicted_path = c(NA, NA, NA, NA, "fallback", integrated_anchor$predicted_path),
+    observed_path = c(
+      NA, NA, NA, NA, provenance$observed_preliminary_path,
+      integrated_anchor$observed_path
+    ),
+    replaced = c(
+      NA, NA, NA, NA, provenance$observed_microkernel_replaced,
+      integrated_anchor$microkernel_replaced
+    ),
+    correct = c(NA, NA, NA, NA, TRUE, integrated_anchor$correctness_status == "pass"),
+    max_abs_diff = c(NA, NA, NA, NA, NA, integrated_anchor$max_abs_diff),
+    has_direct_call = c(NA, NA, NA, NA, FALSE, integrated_anchor$has_direct_call),
+    has_blis_kernel_symbol = c(
+      NA, NA, NA, NA, FALSE, integrated_anchor$has_blis_kernel_symbol
+    )
+  )
+  readr::write_csv(source_rows, file.path(figure_dir, "source_data_fig3-4.csv"))
+
+  nodes <- tibble::tribble(
+    ~xmin, ~xmax, ~ymin, ~ymax, ~title_y, ~body_y, ~title, ~body, ~fill,
+    0.02, 0.16, 0.40, 0.71, 0.65, 0.52, "Source", "Haswell context\nsgemm 6x16\nfixed revision", palette[["fact"]],
+    0.21, 0.35, 0.40, 0.71, 0.65, 0.52, "Fact", "MR=6, NR=16\nKC=256\nE1/E2", palette[["fact"]],
+    0.40, 0.55, 0.40, 0.71, 0.65, 0.52, "Contract", "AVX2/FMA\npacked A/B\ncall ABI", palette[["contract"]],
+    0.60, 0.75, 0.40, 0.71, 0.65, 0.52, "Candidate", "MKN=192/256/256\ntile=24/32/64\nContract-eligible", palette[["candidate"]],
+    0.82, 0.98, 0.61, 0.91, 0.85, 0.73, "Preliminary", "packing absent\npredicted fallback\nobserved fallback", "#F3E5D0",
+    0.82, 0.98, 0.09, 0.39, 0.33, 0.21, "Integrated", "pack_mode=ab\npredicted direct\nobserved direct", "#D4E7D4"
+  )
+  edges <- tibble::tribble(
+    ~x, ~y, ~xend, ~yend, ~kind,
+    0.16, 0.555, 0.21, 0.555, "hard",
+    0.35, 0.555, 0.40, 0.555, "hard",
+    0.55, 0.555, 0.60, 0.555, "hard",
+    0.75, 0.555, 0.82, 0.76, "soft",
+    0.75, 0.555, 0.82, 0.24, "hard"
+  )
+
+  plot <- ggplot() +
+    box_layer(nodes) +
+    edge_layer(edges) +
+    annotate("text", x = 0.5, y = 0.94,
+             label = "Contract eligibility and end-to-end execution are recorded separately",
+             size = 2.75, fontface = "bold", colour = palette[["ink"]]) +
+    annotate("text", x = 0.5, y = 0.05,
+             label = "Integrated direct contains the BLIS wrapper and kernel symbol; max abs diff = 1.37e-6.",
+             size = 2.2, colour = palette[["muted"]]) +
+    scale_colour_manual(values = c(hard = palette[["ink"]], soft = palette[["soft"]]), guide = "none") +
+    scale_linetype_manual(values = c(hard = "solid", soft = "dashed"), guide = "none") +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
+    diagram_theme
+
+  save_pub_r(plot, "fig3-4_provenance_case", 183, 88)
+}
+
+run_qa <- function() {
+  stems <- c(
+    "fig3-1_preliminary_distribution",
+    "fig3-2_fact_contract_rule_boundary",
+    "fig3-3_evidence_normalization_flow",
+    "fig3-4_provenance_case"
+  )
+  results <- lapply(stems, function(stem) {
+    png_path <- file.path(figure_dir, paste0(stem, ".png"))
+    image <- png::readPNG(png_path)
+    rgb <- image[, , seq_len(min(3, dim(image)[3])), drop = FALSE]
+    nonwhite <- mean(apply(rgb < 0.98, c(1, 2), any))
+    channel_sd <- stats::sd(as.numeric(rgb))
+    list(
+      width_px = dim(image)[2],
+      height_px = dim(image)[1],
+      nonwhite_fraction = nonwhite,
+      channel_std = channel_sd,
+      nonblank = channel_sd > 0.01 && nonwhite > 0.02,
+      backend = "R"
+    )
+  })
+  names(results) <- paste0(stems, ".png")
+  if (!all(vapply(results, function(x) x$nonblank, logical(1)))) {
+    stop("figure QA failed")
+  }
+  jsonlite::write_json(
+    results,
+    file.path(figure_dir, "figure_qa.json"),
+    auto_unbox = TRUE,
+    pretty = TRUE
+  )
+}
+
+make_figure_3_1()
+make_figure_3_2()
+make_figure_3_3()
+make_figure_3_4()
+run_qa()
+cat("generated and validated four chapter 3 figures with R in", figure_dir, "\n")

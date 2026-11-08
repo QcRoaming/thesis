@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "inputs": {
+    "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/runtime/openblas_sgemm_probe.c": "d4bd5053a0138482f75c950f460a45d0bedbf39e944c10b3dc8774ad1ce17461",
+    "/buddy-mlir/jlq/thesis/third_party/OpenBLAS/libopenblas.a": "586ed301abb9ea9710ee64631a884be042a7ca665309ebcdc8bf8875662a3661"
+  },
+  "outputs": {
+    "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/build/openblas_haswell/openblas_sgemm_probe": "3757f4e4408b409bf61d00f00b65fb7e3090f8a390a393b0d7475d69d9d28183",
+    "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/raw/openblas_validation.csv": "6277446d4a81e2f239717abc4181c0d8b54060de63c4faaf3723d7be9b2e5ced",
+    "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/processed/openblas_validation_summary.json": "f3dc0a4cb8e75589447b8080a92b04d30910b35c987dc7285ee7809e093eba4c",
+    "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/reports/openblas_runtime_validation.md": "35c1c5939c62c36cecd6679e905d676adfdae9e45f35edd653bd3216208f7c2f"
+  },
+  "commands": {
+    "build": [
+      "make",
+      "TARGET=HASWELL",
+      "DYNAMIC_ARCH=0",
+      "NOFORTRAN=1",
+      "NO_LAPACK=1",
+      "ONLY_CBLAS=1",
+      "BUILD_SINGLE=1",
+      "USE_THREAD=0",
+      "NUM_THREADS=1",
+      "-j8"
+    ],
+    "compile": [
+      "gcc",
+      "-O3",
+      "-march=haswell",
+      "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/runtime/openblas_sgemm_probe.c",
+      "-I",
+      "/buddy-mlir/jlq/thesis/third_party/OpenBLAS",
+      "/buddy-mlir/jlq/thesis/third_party/OpenBLAS/libopenblas.a",
+      "-lm",
+      "-lpthread",
+      "-o",
+      "/buddy-mlir/jlq/thesis/experiments/chapter3_multisource/build/openblas_haswell/openblas_sgemm_probe"
+    ]
+  }
+}

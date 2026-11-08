@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "anchor_192x256x256_f32",
+      "role": "provenance_anchor",
+      "operation": "linalg.matmul",
+      "dtype": "f32",
+      "shape": {"m": 192, "k": 256, "n": 256},
+      "layout": {"a": "row_major", "b": "row_major", "c": "row_major"},
+      "stride": {"a_inner": 1, "b_inner": 1, "c_inner": 1},
+      "alignment_bytes": {"a": null, "b": null, "c": null},
+      "target": {
+        "machine": "x86_64",
+        "architecture": "haswell",
+        "features": ["avx2", "fma"],
+        "vector_bits": 256,
+        "cache_kib": {"l1d": 32, "l2": 256, "l3": 8192}
+      },
+      "threads": 1,
+      "fallback_available": true,
+      "available_adapters": {
+        "packing": true,
+        "mn_tail": true,
+        "k_remainder": true,
+        "layout_conversion": false,
+        "alignment_copy": false
+      }
+    },
+    {
+      "id": "tail_190x250x250_f32",
+      "role": "mnk_tail",
+      "operation": "linalg.matmul",
+      "dtype": "f32",
+      "shape": {"m": 190, "k": 250, "n": 250},
+      "layout": {"a": "row_major", "b": "row_major", "c": "row_major"},
+      "stride": {"a_inner": 1, "b_inner": 1, "c_inner": 1},
+      "alignment_bytes": {"a": null, "b": null, "c": null},
+      "target": {
+        "machine": "x86_64",
+        "architecture": "haswell",
+        "features": ["avx2", "fma"],
+        "vector_bits": 256,
+        "cache_kib": {"l1d": 32, "l2": 256, "l3": 8192}
+      },
+      "threads": 1,
+      "fallback_available": true,
+      "available_adapters": {
+        "packing": true,
+        "mn_tail": true,
+        "k_remainder": true,
+        "layout_conversion": false,
+        "alignment_copy": false
+      }
+    },
+    {
+      "id": "small_64x64x64_f32",
+      "role": "small_square",
+      "operation": "linalg.matmul",
+      "dtype": "f32",
+      "shape": {"m": 64, "k": 64, "n": 64},
+      "layout": {"a": "row_major", "b": "row_major", "c": "row_major"},
+      "stride": {"a_inner": 1, "b_inner": 1, "c_inner": 1},
+      "alignment_bytes": {"a": null, "b": null, "c": null},
+      "target": {
+        "machine": "x86_64",
+        "architecture": "haswell",
+        "features": ["avx2", "fma"],
+        "vector_bits": 256,
+        "cache_kib": {"l1d": 32, "l2": 256, "l3": 8192}
+      },
+      "threads": 1,
+      "fallback_available": true,
+      "available_adapters": {
+        "packing": true,
+        "mn_tail": true,
+        "k_remainder": true,
+        "layout_conversion": false,
+        "alignment_copy": false
+      }
+    },
+    {
+      "id": "rect_48x256x64_f32",
+      "role": "rectangular_aligned",
+      "operation": "linalg.matmul",
+      "dtype": "f32",
+      "shape": {"m": 48, "k": 256, "n": 64},
+      "layout": {"a": "row_major", "b": "row_major", "c": "row_major"},
+      "stride": {"a_inner": 1, "b_inner": 1, "c_inner": 1},
+      "alignment_bytes": {"a": null, "b": null, "c": null},
+      "target": {
+        "machine": "x86_64",
+        "architecture": "haswell",
+        "features": ["avx2", "fma"],
+        "vector_bits": 256,
+        "cache_kib": {"l1d": 32, "l2": 256, "l3": 8192}
+      },
+      "threads": 1,
+      "fallback_available": true,
+      "available_adapters": {
+        "packing": true,
+        "mn_tail": true,
+        "k_remainder": true,
+        "layout_conversion": false,
+        "alignment_copy": false
+      }
+    },
+    {
+      "id": "aligned_192x256x256_f64",
+      "role": "second_dtype",
+      "operation": "linalg.matmul",
+      "dtype": "f64",
+      "shape": {"m": 192, "k": 256, "n": 256},
+      "layout": {"a": "row_major", "b": "row_major", "c": "row_major"},
+      "stride": {"a_inner": 1, "b_inner": 1, "c_inner": 1},
+      "alignment_bytes": {"a": null, "b": null, "c": null},
+      "target": {
+        "machine": "x86_64",
+        "architecture": "haswell",
+        "features": ["avx2", "fma"],
+        "vector_bits": 256,
+        "cache_kib": {"l1d": 32, "l2": 256, "l3": 8192}
+      },
+      "threads": 1,
+      "fallback_available": true,
+      "available_adapters": {
+        "packing": true,
+        "mn_tail": true,
+        "k_remainder": true,
+        "layout_conversion": false,
+        "alignment_copy": false
+      }
+    },
+    {
+      "id": "feature_mismatch_192x256x256_f32",
+      "role": "contract_miss",
+      "operation": "linalg.matmul",
+      "dtype": "f32",
+      "shape": {"m": 192, "k": 256, "n": 256},
+      "layout": {"a": "row_major", "b": "row_major", "c": "row_major"},
+      "stride": {"a_inner": 1, "b_inner": 1, "c_inner": 1},
+      "alignment_bytes": {"a": null, "b": null, "c": null},
+      "target": {
+        "machine": "x86_64",
+        "architecture": "generic",
+        "features": ["sse4.2"],
+        "vector_bits": 128,
+        "cache_kib": {"l1d": 32, "l2": 256, "l3": 8192}
+      },
+      "threads": 1,
+      "fallback_available": true,
+      "available_adapters": {
+        "packing": false,
+        "mn_tail": true,
+        "k_remainder": true,
+        "layout_conversion": false,
+        "alignment_copy": false
+      }
+    }
+  ]
+}

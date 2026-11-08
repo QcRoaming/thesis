@@ -1,0 +1,116 @@
+schema_version: 1
+contracts:
+- id: blis_haswell_gemm_f32_contract
+  fact_id: blis.haswell.gemm.f32
+  library: BLIS
+  operation: linalg.matmul
+  dtype: f32
+  target:
+    architecture: haswell
+    machine: x86_64
+    required_features:
+    - avx2
+    - fma
+  kernel:
+    symbol: bli_sgemm_haswell_asm_6x16
+    mr: 6
+    nr: 16
+    row_preferred: true
+  packing:
+    required: true
+    kernel: bli_spackm_haswell_asm_6x16
+    a_panel: 6xkc
+    b_panel: kcx16
+  layout: {}
+  call_convention: BLIS GEMM_UKR ABI
+  public_entry: bli_sgemm
+  fallback_path: generic_mlir_tiled_vectorized_loop
+  compatibility_policy: hard_backend_specific
+  performance_hint_policy: soft_online_calibrated
+- id: blis_rv64iv_vlen128_gemm_f32_contract
+  fact_id: blis.rv64iv_vlen128.gemm.f32
+  library: BLIS
+  operation: linalg.matmul
+  dtype: f32
+  target:
+    architecture: rv64iv_vlen128
+    machine: riscv64
+    required_features:
+    - rv64gc
+    - rvv
+    - zvl128b
+    deployment_target: K230 C908 big core
+    assumed_vlen_bits: 128
+  kernel:
+    symbol: bli_sgemm_rviv_4vx4
+    mr: 16
+    nr: 4
+  packing:
+    required: true
+    a_panel: 16xkc
+    b_panel: kcx4
+  layout:
+    output_layout: column_major_required_by_kernel_wrapper
+    output_stride_constraint: rs_c == 1
+  call_convention: BLIS GEMM_UKR ABI
+  public_entry: bli_sgemm
+  fallback_path: generic_mlir_tiled_vectorized_loop
+  compatibility_policy: hard_backend_specific
+  performance_hint_policy: soft_online_calibrated
+- id: openblas_haswell_gemm_f32_contract
+  fact_id: openblas.haswell.gemm.f32
+  library: OpenBLAS
+  operation: linalg.matmul
+  dtype: f32
+  target:
+    architecture: haswell
+    machine: x86_64
+    required_features:
+    - avx2
+    - fma
+  kernel:
+    source: sgemm_kernel_8x4_haswell_2.c
+    mr: 8
+    nr: 4
+  packing:
+    required: true
+    kernels:
+      sgemmincopy: ../generic/gemm_ncopy_8.c
+      sgemmitcopy: ../generic/gemm_tcopy_8.c
+      sgemmoncopy: sgemm_ncopy_4_skylakex.c
+      sgemmotcopy: ../generic/gemm_tcopy_4.c
+  layout: {}
+  call_convention: OpenBLAS internal GEMM kernel ABI
+  public_entry: cblas_sgemm
+  fallback_path: generic_mlir_tiled_vectorized_loop
+  compatibility_policy: hard_backend_specific
+  performance_hint_policy: soft_online_calibrated
+- id: openblas_riscv64_zvl128b_gemm_f32_contract
+  fact_id: openblas.riscv64_zvl128b.gemm.f32
+  library: OpenBLAS
+  operation: linalg.matmul
+  dtype: f32
+  target:
+    architecture: riscv64_zvl128b
+    machine: riscv64
+    required_features:
+    - rv64gc
+    - rvv
+    - zvl128b
+  kernel:
+    source: sgemm_kernel_8x8_zvl128b.c
+    mr: 8
+    nr: 8
+  packing:
+    required: true
+    kernels:
+      sgemmoncopy: ../generic/gemm_ncopy_8.c
+      sgemmotcopy: ../generic/gemm_tcopy_8.c
+      sgemmincopy: ../generic/gemm_ncopy_8.c
+      sgemmitcopy: ../generic/gemm_tcopy_8.c
+  layout: {}
+  call_convention: OpenBLAS internal GEMM kernel ABI
+  public_entry: cblas_sgemm
+  fallback_path: generic_mlir_tiled_vectorized_loop
+  compatibility_policy: hard_backend_specific
+  performance_hint_policy: soft_online_calibrated

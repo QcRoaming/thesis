@@ -1,0 +1,313 @@
+schema_version: 1
+sources:
+  BLIS:
+    path: /buddy-mlir/jlq/thesis/blis/blis
+    revision: 36df51a81cc732eeadbf2e6732941dd5400db47d
+  OpenBLAS:
+    path: /buddy-mlir/jlq/thesis/third_party/OpenBLAS
+    revision: b338322e9afc063d95e2c117e85bedf28213295a
+facts:
+- id: blis.haswell.gemm.f32
+  library: BLIS
+  operation: gemm
+  dtype: f32
+  target:
+    architecture: haswell
+    machine: x86_64
+    required_features:
+    - avx2
+    - fma
+  compatibility_knowledge:
+    microkernel:
+      symbol: bli_sgemm_haswell_asm_6x16
+      mr: 6
+      nr: 16
+      row_preferred: true
+    packing:
+      required: true
+      kernel: bli_spackm_haswell_asm_6x16
+      a_panel: 6xkc
+      b_panel: kcx16
+    call_convention: BLIS GEMM_UKR ABI
+    public_entry: bli_sgemm
+    compiler_flags: -mavx2 -mfma -mfpmath=sse -march=haswell
+  performance_knowledge:
+    kind: soft_prior
+    native_parameter_names: BLIS MC/KC/NC
+    blocking:
+      mc: 168
+      kc: 256
+      nc: 4080
+    runtime_derived: []
+  evidence:
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 54
+    kind: kernel_registration
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: kernels/haswell/3/bli_gemm_haswell_asm_d6x8.c
+    line: 80
+    kind: kernel_definition
+    sha256: e1227259804d3b6f058fb2d58a99c27e50a3bee6634fd5ea22db2d56f5b4ff87
+  - file: kernels/haswell/3/bli_gemm_haswell_asm_d6x8.c
+    line: 104
+    kind: kernel_contract_check
+    sha256: e1227259804d3b6f058fb2d58a99c27e50a3bee6634fd5ea22db2d56f5b4ff87
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 149
+    kind: storage_preference
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 74
+    kind: pack_kernel_registration
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 192
+    kind: mr_value
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 193
+    kind: nr_value
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 196
+    kind: mc_value
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 197
+    kind: kc_value
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 206
+    kind: nc_value
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 235
+    kind: blocksize_multiple
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 236
+    kind: blocksize_multiple
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 237
+    kind: blocksize_multiple
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 238
+    kind: blocksize_multiple
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 239
+    kind: blocksize_multiple
+    sha256: 5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97
+  - file: config/haswell/make_defs.mk
+    line: 68
+    kind: compiler_isa_flags
+    sha256: 4936b3dfb543323d4f35d4af63a347d867da2a8d6dce3f8a4bbb0d9964c1ff28
+- id: blis.rv64iv_vlen128.gemm.f32
+  library: BLIS
+  operation: gemm
+  dtype: f32
+  target:
+    architecture: rv64iv_vlen128
+    machine: riscv64
+    required_features:
+    - rv64gc
+    - rvv
+    - zvl128b
+    deployment_target: K230 C908 big core
+    assumed_vlen_bits: 128
+  compatibility_knowledge:
+    microkernel:
+      symbol: bli_sgemm_rviv_4vx4
+      mr: 16
+      nr: 4
+    packing:
+      required: true
+      a_panel: 16xkc
+      b_panel: kcx4
+    output_layout: column_major_required_by_kernel_wrapper
+    output_stride_constraint: rs_c == 1
+    call_convention: BLIS GEMM_UKR ABI
+    public_entry: bli_sgemm
+    compiler_flags: -march=rv64gcv_zvl128b -mabi=lp64d
+  performance_knowledge:
+    kind: soft_prior
+    native_parameter_names: BLIS MC/KC/NC
+    blocking:
+      mc: 320
+      kc: 640
+      nc: 3072
+    runtime_derived:
+    - mr=4*(VLEN/32)
+  evidence:
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 50
+    kind: vlen_query
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 54
+    kind: mr_formula
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 68
+    kind: kernel_registration
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 82
+    kind: storage_preference
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 93
+    kind: nr_value
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 94
+    kind: mc_formula
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 95
+    kind: kc_value
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: config/rv64iv/bli_cntx_init_rv64iv.c
+    line: 96
+    kind: nc_value
+    sha256: 70a655359fa6859e235875a5757648cd056f86b25954c48725eb0904a3d03ef8
+  - file: kernels/rviv/3/bli_sgemm_rviv_4vx4.c
+    line: 71
+    kind: kernel_contract
+    sha256: 70a170b7455c1ab273f4f6e3c30e9c5d669f6e3660209de83ba9cdc08c99083e
+  - file: kernels/rviv/3/bli_sgemm_rviv_4vx4.c
+    line: 74
+    kind: output_stride_contract
+    sha256: 70a170b7455c1ab273f4f6e3c30e9c5d669f6e3660209de83ba9cdc08c99083e
+  - file: kernels/rviv/3/bli_sgemm_rviv_asm_4vx4.S
+    line: 36
+    kind: assembly_definition
+    sha256: fc39fe15b043c180a931d4b8e8a70cf365b12d1eacb060f2a0561fb650451376
+- id: openblas.haswell.gemm.f32
+  library: OpenBLAS
+  operation: gemm
+  dtype: f32
+  target:
+    architecture: haswell
+    machine: x86_64
+    required_features:
+    - avx2
+    - fma
+  compatibility_knowledge:
+    microkernel:
+      source: sgemm_kernel_8x4_haswell_2.c
+      mr: 8
+      nr: 4
+    packing:
+      required: true
+      kernels:
+        sgemmincopy: ../generic/gemm_ncopy_8.c
+        sgemmitcopy: ../generic/gemm_tcopy_8.c
+        sgemmoncopy: sgemm_ncopy_4_skylakex.c
+        sgemmotcopy: ../generic/gemm_tcopy_4.c
+    call_convention: OpenBLAS internal GEMM kernel ABI
+    public_entry: cblas_sgemm
+    compiler_flags: -march=haswell
+  performance_knowledge:
+    kind: soft_prior
+    native_parameter_names: OpenBLAS P/Q/R
+    blocking:
+      p: 320
+      q: 320
+      r: sgemm_r
+    runtime_derived:
+    - r
+  evidence:
+  - file: param.h
+    line: 122
+    kind: mr_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 107
+    kind: nr_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 699
+    kind: p_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 705
+    kind: q_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 137
+    kind: r_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: kernel/x86_64/KERNEL.HASWELL
+    line: 36
+    kind: kernel_mapping
+    sha256: d7c31dea73532fa59225b1014e3550b35f0b61581b6db69be7302a1a36be3fed
+  - file: kernel/x86_64/KERNEL.HASWELL
+    line: 40
+    kind: packing_mapping
+    sha256: d7c31dea73532fa59225b1014e3550b35f0b61581b6db69be7302a1a36be3fed
+- id: openblas.riscv64_zvl128b.gemm.f32
+  library: OpenBLAS
+  operation: gemm
+  dtype: f32
+  target:
+    architecture: riscv64_zvl128b
+    machine: riscv64
+    required_features:
+    - rv64gc
+    - rvv
+    - zvl128b
+  compatibility_knowledge:
+    microkernel:
+      source: sgemm_kernel_8x8_zvl128b.c
+      mr: 8
+      nr: 8
+    packing:
+      required: true
+      kernels:
+        sgemmoncopy: ../generic/gemm_ncopy_8.c
+        sgemmotcopy: ../generic/gemm_tcopy_8.c
+        sgemmincopy: ../generic/gemm_ncopy_8.c
+        sgemmitcopy: ../generic/gemm_tcopy_8.c
+    call_convention: OpenBLAS internal GEMM kernel ABI
+    public_entry: cblas_sgemm
+    compiler_flags: -march=rv64imafdcv -mabi=lp64d
+  performance_knowledge:
+    kind: soft_prior
+    native_parameter_names: OpenBLAS P/Q/R
+    blocking:
+      p: 128
+      q: 240
+      r: 12288
+    runtime_derived: []
+  evidence:
+  - file: param.h
+    line: 122
+    kind: mr_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 864
+    kind: nr_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 823
+    kind: p_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 155
+    kind: q_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: param.h
+    line: 422
+    kind: r_value
+    sha256: 7bc51dd47e1a4b2a10ab08ae00d4212e33926a1bc26d6d26bd8f18fd565b3722
+  - file: kernel/riscv64/KERNEL.RISCV64_ZVL128B
+    line: 98
+    kind: kernel_mapping
+    sha256: 39675c0496dbd1e8729c5c85b0a01bd793cd0f28c777181e76245d7b3f19485b
+  - file: kernel/riscv64/KERNEL.RISCV64_ZVL128B
+    line: 100
+    kind: packing_mapping
+    sha256: 39675c0496dbd1e8729c5c85b0a01bd793cd0f28c777181e76245d7b3f19485b

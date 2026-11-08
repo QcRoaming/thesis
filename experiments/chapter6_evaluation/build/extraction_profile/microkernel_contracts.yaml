@@ -1,0 +1,153 @@
+schema_version: 2
+generated_by: scripts/extract_blis_facts.py
+contracts:
+- id: haswell_f32_gemm_6x16
+  kernel_id: haswell_f32_gemm_6x16
+  fact_id: blis.haswell.gemm.f32
+  operation: linalg.matmul
+  dtype: f32
+  target:
+    machine: x86_64
+    architecture: haswell
+    required_features:
+    - avx2
+    - fma
+  kernel: bli_sgemm_haswell_asm_6x16
+  isa:
+  - avx2
+  - fma
+  mr: 6
+  nr: 16
+  register_tile:
+    m: 6
+    n: 16
+  k_constraint:
+    minimum: 0
+    multiple: 1
+    main_loop_step: 4
+    remainder_supported: true
+  cache_blocking:
+    mc: 168
+    kc: 256
+    nc: 4080
+  input_layout:
+    a: BLIS packed A micropanel
+    b: BLIS packed B micropanel
+  output_layout: row_major_preferred
+  stride:
+    a: packed-panel stride supplied by BLIS
+    b: packed-panel stride supplied by BLIS
+    c: row or column stride passed through GEMM_UKR ABI
+  alignment:
+    a_bytes: null
+    b_bytes: null
+    c_bytes: null
+    verification_status: ambiguous_in_context_source
+  packing:
+    required_for_direct: true
+    a_panel_multiple: mr
+    b_panel_multiple: nr
+    kernel: bli_spackm_haswell_asm_6x16
+  layout:
+    output_preference: row_major
+  vectorization:
+    required_features:
+    - avx2
+    - fma
+    vector_bits: 256
+    lanes: 8
+  tail_policy:
+    kernel: fixed_mr_nr_with_k_remainder
+    adapter: pad_or_fringe_then_fallback
+  call_convention: BLIS GEMM_UKR ABI
+  fallback_path: generic_mlir_tiled_loop
+  kernel_requirements:
+    fixed_mr: 6
+    fixed_nr: 16
+    packed_a: true
+    packed_b: true
+    required_features:
+    - avx2
+    - fma
+  adapter_capabilities:
+    insert_packing: true
+    handle_mn_tail: true
+    handle_k_remainder: true
+    fallback_when_unavailable: true
+  verification_status: source_cross_checked_human_verified
+  evidence_fact: blis.haswell.gemm.f32
+- id: haswell_f64_gemm_6x8
+  kernel_id: haswell_f64_gemm_6x8
+  fact_id: blis.haswell.gemm.f64
+  operation: linalg.matmul
+  dtype: f64
+  target:
+    machine: x86_64
+    architecture: haswell
+    required_features:
+    - avx2
+    - fma
+  kernel: bli_dgemm_haswell_asm_6x8
+  isa:
+  - avx2
+  - fma
+  mr: 6
+  nr: 8
+  register_tile:
+    m: 6
+    n: 8
+  k_constraint:
+    minimum: 0
+    multiple: 1
+    main_loop_step: 4
+    remainder_supported: true
+  cache_blocking:
+    mc: 72
+    kc: 256
+    nc: 4080
+  input_layout:
+    a: BLIS packed A micropanel
+    b: BLIS packed B micropanel
+  output_layout: row_major_preferred
+  stride:
+    a: packed-panel stride supplied by BLIS
+    b: packed-panel stride supplied by BLIS
+    c: row or column stride passed through GEMM_UKR ABI
+  alignment:
+    a_bytes: null
+    b_bytes: null
+    c_bytes: null
+    verification_status: ambiguous_in_context_source
+  packing:
+    required_for_direct: true
+    a_panel_multiple: mr
+    b_panel_multiple: nr
+    kernel: bli_dpackm_haswell_asm_6x8
+  layout:
+    output_preference: row_major
+  vectorization:
+    required_features:
+    - avx2
+    - fma
+    vector_bits: 256
+    lanes: 4
+  tail_policy:
+    kernel: fixed_mr_nr_with_k_remainder
+    adapter: pad_or_fringe_then_fallback
+  call_convention: BLIS GEMM_UKR ABI
+  fallback_path: generic_mlir_tiled_loop
+  kernel_requirements:
+    fixed_mr: 6
+    fixed_nr: 8
+    packed_a: true
+    packed_b: true
+    required_features:
+    - avx2
+    - fma
+  adapter_capabilities:
+    insert_packing: true
+    handle_mn_tail: true
+    handle_k_remainder: true
+    fallback_when_unavailable: true
+  verification_status: source_cross_checked_human_verified
+  evidence_fact: blis.haswell.gemm.f64

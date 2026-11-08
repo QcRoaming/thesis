@@ -1,0 +1,23 @@
+# CPU MatMul Benchmark
+
+Generated at: 2026-06-11T02:15:18Z
+
+## Platform
+
+- CPU: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz
+- Compiler: clang version 21.0.0git
+- Flags: -O3 -march=native -std=c++17
+
+## Results
+
+```csv
+workload,shape,schedule,tile_m,tile_n,tile_k,median_ms,min_ms,max_abs_diff,checksum
+matmul,128x128x128,default_ijk,0,0,0,2.0225,1.7584,0.000000,-3.115054
+matmul,128x128x128,tile_16_16_32,16,16,32,1.8785,1.3481,0.000000,-3.115054
+matmul,128x128x128,tile_32_32_32,32,32,32,1.6121,1.5194,0.000000,-3.115054
+matmul,256x256x256,default_ijk,0,0,0,24.5840,20.5664,0.000000,2.965000
+matmul,256x256x256,tile_16_16_32,16,16,32,21.0450,17.9513,0.000000,2.965000
+matmul,256x256x256,tile_32_32_32,32,32,32,18.7813,16.8874,0.000000,2.965000
+```
+
+Note: this is a native C++ schedule benchmark mirroring the tile sizes used by the Transform Dialect scripts. It is an initial latency sanity check, not the final MLIR AOT performance result.

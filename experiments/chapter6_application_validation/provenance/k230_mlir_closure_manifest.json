@@ -1,0 +1,427 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_application_validation.k230_mlir_closure",
+  "status": "elf_ready_awaiting_board_measurement",
+  "protocol": {
+    "schema_version": 1,
+    "experiment_id": "thesis.chapter6_application_validation",
+    "protocol_status": "first_confirmatory_local_x86_measurement_failed_stability_gate; measurement_qualification_frozen_before_execution",
+    "frozen_utc": "2026-07-22T01:03:01Z",
+    "questions": {
+      "k230_mlir_closure": "Can generated Contract parameters flow through linalg and Transform Dialect lowering into the same OpenBLAS packing and sgemm_kernel adapter on K230?",
+      "model_relevance": "What fraction of a real Qwen2.5-0.5B Transformer projection trace is represented by the frozen workload pool?",
+      "weighted_boundary": "What is the trace-weighted latency and tuning-cost boundary on the local x86 host and, once available, the external targets?"
+    },
+    "local_x86": {
+      "target_id": "i7_10750h_wsl2",
+      "workloads": "the eight exact GEMM shapes emitted by the Qwen trace",
+      "candidate_pool_size_per_workload": 28,
+      "measurement_phase": "confirmatory_after_two_disclosed_pilot_runs",
+      "pilot_instability_record": "provenance/local_x86_pilot_instability.json",
+      "cpu_affinity": 10,
+      "warmups": 2,
+      "repeats_per_process": 3,
+      "process_trials_per_batch": 3,
+      "batch_count": 3,
+      "target_timed_flops_per_sample": 100000000,
+      "maximum_inner_iters": 10,
+      "settle_seconds": 3,
+      "thread_environment": {
+        "BLIS_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1"
+      },
+      "stability_acceptance": {
+        "minimum_process_medians_per_variant": 9,
+        "maximum_robust_cv": 0.15,
+        "minimum_variant_pass_fraction": 0.95,
+        "maximum_pool_to_library_batch_ratio_spread": 0.15
+      },
+      "search_checkpoints": [
+        5,
+        10
+      ],
+      "search_seeds": [
+        11,
+        29,
+        41,
+        73,
+        101
+      ],
+      "complete_library_baseline": "single-thread BLIS sgemm",
+      "measurement_scope": "single-thread kernel execution; no model framework, tokenization, attention, or lm_head time"
+    },
+    "local_x86_measurement_qualification": {
+      "protocol_id": "wsl_cpu_affinity_and_timing_window_qualification_v1",
+      "frozen_utc": "2026-07-22T01:03:01Z",
+      "purpose": "diagnose measurement fitness only; qualification timings are excluded from performance claims",
+      "first_confirmatory_result": {
+        "status": "FAIL_UNSTABLE",
+        "process_medians_per_variant": 9,
+        "variant_pass_fraction": 0.15948275862068967,
+        "pool_to_blis_batch_ratio_relative_spread": 0.1143117403771475,
+        "artifact": "targets/i7_10750h/processed/summary.json"
+      },
+      "cpu_candidates": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10
+      ],
+      "cases": [
+        {
+          "workload_id": "qkv_decode_m8",
+          "candidate_id": "m6_n64_k128_pab_v0"
+        },
+        {
+          "workload_id": "gate_up_prefill_m32",
+          "candidate_id": "m24_n128_k256_pab_v0"
+        }
+      ],
+      "variants": [
+        "generated_candidate",
+        "B5_blis"
+      ],
+      "process_trials_per_variant": 5,
+      "warmups": 4,
+      "repeats_per_process": 7,
+      "target_timed_flops_per_sample": 1000000000,
+      "maximum_inner_iters": 64,
+      "settle_seconds": 1,
+      "acceptance": {
+        "maximum_robust_cv": 0.15,
+        "required_case_variant_pass_fraction": 1.0,
+        "selection_rule": "select the lowest-numbered CPU among qualifying CPUs; never select by throughput"
+      },
+      "decision": {
+        "if_pass": "freeze the selected CPU and execute confirmatory protocol v2",
+        "if_fail": "stop local WSL performance claims and retain only correctness, liveness, trace, and static-closure evidence"
+      },
+      "confirmatory_v2_if_qualified": {
+        "warmups": 3,
+        "repeats_per_process": 5,
+        "process_trials_per_batch": 2,
+        "batch_count": 3,
+        "target_timed_flops_per_sample": 500000000,
+        "maximum_inner_iters": 32,
+        "settle_seconds": 5,
+        "stability_acceptance": {
+          "minimum_process_medians_per_variant": 6,
+          "maximum_robust_cv": 0.15,
+          "minimum_variant_pass_fraction": 0.95,
+          "maximum_pool_to_library_batch_ratio_spread": 0.15
+        }
+      }
+    },
+    "k230": {
+      "cases": "data/k230_mlir_closure_cases.json",
+      "warmups": 1,
+      "process_trials": 5,
+      "required_variants": [
+        "c_adapter_direct",
+        "mlir_transform_adapter",
+        "openblas_full"
+      ],
+      "primary_parity_metric": "mlir_transform_adapter_time / c_adapter_direct_time",
+      "acceptance": {
+        "correctness": "all rows pass deterministic projection checking",
+        "path": "all generated LLVM IR files call their Transform-selected adapter symbol",
+        "runtime": "all MLIR entry points reach the shared adapter and OpenBLAS sgemm_kernel",
+        "parity": "the workload-cluster interval for C-adapter/MLIR-adapter includes 1.0 or its point estimate differs by no more than 5 percent"
+      }
+    },
+    "qwen_trace": {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "model_config": "data/qwen2_5_0_5b_instruct_config.json",
+      "execution": "Hugging Face Qwen2ForCausalLM shape execution with parameterized modules replaced by stateless shape-preserving modules",
+      "scenarios": [
+        {
+          "id": "decode_batch8",
+          "batch": 8,
+          "sequence": 1,
+          "m": 8
+        },
+        {
+          "id": "prefill_batch1_seq32",
+          "batch": 1,
+          "sequence": 32,
+          "m": 32
+        }
+      ],
+      "canonicalization": {
+        "q_proj+k_proj+v_proj": "qkv",
+        "gate_proj+up_proj": "gate_up",
+        "o_proj": "attention_output",
+        "down_proj": "down_projection"
+      },
+      "scope": "24 Transformer blocks; lm_head is retained in the raw trace but excluded from the core projection coverage claim"
+    },
+    "claim_boundary": "The experiment validates a representative MLIR-to-K230 adapter closure and a real model-code GEMM shape trace. It does not claim full-model execution, multithreaded speedup, or universal RISC-V backend portability."
+  },
+  "cases": [
+    {
+      "id": "direct_qkv_prefill_m32",
+      "workload_id": "qkv_prefill_m32",
+      "candidate_id": "m32_n8_k128_pab_v1",
+      "expected_path": "direct",
+      "selection_reason": "M, N, and K are divisible by the selected tile and the OpenBLAS 8x8 Contract",
+      "token": "direct_qkv_prefill_m32",
+      "m": 32,
+      "k": 896,
+      "n": 1152,
+      "tile_m": 32,
+      "tile_n": 8,
+      "tile_k": 128,
+      "score": 92.161111,
+      "adapter_symbol": "k230_contract_adapter_direct_qkv_prefill_m32",
+      "mlir_entry_symbol": "_mlir_ciface_k230_mlir_direct_qkv_prefill_m32",
+      "checks": {
+        "input_has_linalg": true,
+        "input_has_transform_parameter": true,
+        "transformed_has_adapter_call": true,
+        "transformed_has_no_linalg": true,
+        "llvm_has_adapter_ciface": true,
+        "llvm_has_mlir_entry": true
+      },
+      "timings_ms": {
+        "transform_ms": 255.673139,
+        "lower_ms": 214.71069,
+        "translate_ms": 71.612638,
+        "host_object_ms": 342.250144,
+        "target_object_ms": 253.88173
+      },
+      "artifacts": {
+        "input.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/direct_qkv_prefill_m32/input.mlir",
+          "sha256": "3c1cae7fc47c4d0bf9807a7c814096f22a6c0c7d208d08937ef5e8fe2d9d1e55"
+        },
+        "transformed.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/direct_qkv_prefill_m32/transformed.mlir",
+          "sha256": "5a1d5f8ddb22b0f391e0b35d027a382d1cbcaae84475b1bc49f18ae702e44e9e"
+        },
+        "llvm.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/direct_qkv_prefill_m32/llvm.mlir",
+          "sha256": "47756a1ef2c114e1797d0362778ad643df1989581bdff15b34d654b902f397b8"
+        },
+        "kernel.ll": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/direct_qkv_prefill_m32/kernel.ll",
+          "sha256": "0f61982dd6106ba3bbc3f37c1616415d85878015da8bbacbc4e5bfd102bbb4fe"
+        },
+        "kernel_host.o": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/direct_qkv_prefill_m32/kernel_host.o",
+          "sha256": "a74de1a89284280f675cf4017a566851918de8f5423e5a7fce2ac92f33c661b1"
+        },
+        "kernel_rv64gcv.o": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/direct_qkv_prefill_m32/kernel_rv64gcv.o",
+          "sha256": "ff04f19efa66eeed7ece028a2f82b3a900a334d130d831f1e048a929a61aea66"
+        }
+      }
+    },
+    {
+      "id": "adapt_qkv_fringe_m17",
+      "workload_id": "qkv_fringe_m17",
+      "candidate_id": "m16_n16_k240_pab_v1",
+      "expected_path": "adapt",
+      "selection_reason": "predeclared M, N, and K triple-fringe stress case",
+      "token": "adapt_qkv_fringe_m17",
+      "m": 17,
+      "k": 897,
+      "n": 1153,
+      "tile_m": 16,
+      "tile_n": 16,
+      "tile_k": 240,
+      "score": 79.820213,
+      "adapter_symbol": "k230_contract_adapter_adapt_qkv_fringe_m17",
+      "mlir_entry_symbol": "_mlir_ciface_k230_mlir_adapt_qkv_fringe_m17",
+      "checks": {
+        "input_has_linalg": true,
+        "input_has_transform_parameter": true,
+        "transformed_has_adapter_call": true,
+        "transformed_has_no_linalg": true,
+        "llvm_has_adapter_ciface": true,
+        "llvm_has_mlir_entry": true
+      },
+      "timings_ms": {
+        "transform_ms": 44.245275,
+        "lower_ms": 48.524901,
+        "translate_ms": 13.75632,
+        "host_object_ms": 66.310616,
+        "target_object_ms": 56.436835
+      },
+      "artifacts": {
+        "input.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_qkv_fringe_m17/input.mlir",
+          "sha256": "09a823c6db83b4c096320ffc1ae8bde410b633e8925a58729dea24106dec9ca8"
+        },
+        "transformed.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_qkv_fringe_m17/transformed.mlir",
+          "sha256": "ab1bdd04a5ec9d8f8d29639f59cf8c59ab2bc437c5f57bf1bd2772e69b889aa1"
+        },
+        "llvm.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_qkv_fringe_m17/llvm.mlir",
+          "sha256": "edee8b7844ca0948a33c58b8a4efb4a360a662f76e660a525a9f57df741c12c5"
+        },
+        "kernel.ll": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_qkv_fringe_m17/kernel.ll",
+          "sha256": "85e86737c87881630e95a89524b81c3e23597f2dccfa1a5c3fdfc04a49782a7a"
+        },
+        "kernel_host.o": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_qkv_fringe_m17/kernel_host.o",
+          "sha256": "adc99b2fe7d0af3acd7cf8a2b20c5737d8fd7d35430def9f281117c27eb8f489"
+        },
+        "kernel_rv64gcv.o": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_qkv_fringe_m17/kernel_rv64gcv.o",
+          "sha256": "5de5926fbc1abad84693ac12c06340637e4ab0623de6b20a0ff9019d5096f42d"
+        }
+      }
+    },
+    {
+      "id": "adapt_down_fringe_m33",
+      "workload_id": "down_fringe_m33",
+      "candidate_id": "m32_n16_k240_pab_v1",
+      "expected_path": "adapt",
+      "selection_reason": "large-K M, N, and K triple-fringe stress case",
+      "token": "adapt_down_fringe_m33",
+      "m": 33,
+      "k": 4865,
+      "n": 895,
+      "tile_m": 32,
+      "tile_n": 16,
+      "tile_k": 240,
+      "score": 79.950296,
+      "adapter_symbol": "k230_contract_adapter_adapt_down_fringe_m33",
+      "mlir_entry_symbol": "_mlir_ciface_k230_mlir_adapt_down_fringe_m33",
+      "checks": {
+        "input_has_linalg": true,
+        "input_has_transform_parameter": true,
+        "transformed_has_adapter_call": true,
+        "transformed_has_no_linalg": true,
+        "llvm_has_adapter_ciface": true,
+        "llvm_has_mlir_entry": true
+      },
+      "timings_ms": {
+        "transform_ms": 30.212387,
+        "lower_ms": 31.610895,
+        "translate_ms": 14.195888,
+        "host_object_ms": 67.917817,
+        "target_object_ms": 33.759351
+      },
+      "artifacts": {
+        "input.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_down_fringe_m33/input.mlir",
+          "sha256": "dedb1af07f68c7a146de290056ee5caed31e12ba4fa0267cdd83bb272a8f9f6d"
+        },
+        "transformed.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_down_fringe_m33/transformed.mlir",
+          "sha256": "0eb23118a6d64a39bbacb0f95eeb4d44e815dfff1190bfb9836d59202fd3cdb6"
+        },
+        "llvm.mlir": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_down_fringe_m33/llvm.mlir",
+          "sha256": "4bad2b7b15805c9c5f917b7837fb7b7936e47ae9b306cef6a9f187a109c2c200"
+        },
+        "kernel.ll": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_down_fringe_m33/kernel.ll",
+          "sha256": "97cbaf7ed5d7222ec2887bb4aece6bae324bd75277fbe378e7693f1685695aa6"
+        },
+        "kernel_host.o": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_down_fringe_m33/kernel_host.o",
+          "sha256": "70d9e4b3ddd13524da610ade8e032ba4f29efcf60d2c82c499345de8b0a02cfc"
+        },
+        "kernel_rv64gcv.o": {
+          "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_down_fringe_m33/kernel_rv64gcv.o",
+          "sha256": "af36fe402da585dfed8caca3762497cb4936db9a5543c15c1b34ae8dd887425b"
+        }
+      }
+    }
+  ],
+  "host_abi_smoke": {
+    "status": "PASS",
+    "stdout": "PASS cases=3 adapter_calls=3",
+    "compile_ms": 318.166062,
+    "executable": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/host_closure_smoke",
+    "sha256": "c1e077b7a4d5a4bbcc377235cb41eb9c5eeaf9e9105af19b5820298f0c92dde7",
+    "stub_sha256": "507463ac13dce7953e2a23f203f65ef27d79899e7e10206f71868b297ad8351a"
+  },
+  "target_elf": {
+    "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/k230_mlir_closure.elf",
+    "build_command": [
+      "/buddy-mlir/jlq/thesis/third_party/k230_sdk/toolchain/riscv64-linux-musleabi_for_x86_64-pc-linux-gnu/bin/riscv64-unknown-linux-musl-gcc",
+      "-std=c11",
+      "-O3",
+      "-march=rv64imafdcv",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-n",
+      "-static",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-fno-strict-aliasing",
+      "-Wl,--gc-sections",
+      "-Wl,--build-id=none",
+      "-T",
+      "/buddy-mlir/jlq/thesis/third_party/k230_sdk/src/big/rt-smart/userapps/linker_scripts/riscv64/link.lds",
+      "-I",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/generated",
+      "-I",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/build/generated",
+      "-I",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/runtime",
+      "-I",
+      "/buddy-mlir/jlq/thesis/third_party/OpenBLAS-k230",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/runtime/k230_mlir_closure_bench.c",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/direct_qkv_prefill_m32/kernel_rv64gcv.o",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_qkv_fringe_m17/kernel_rv64gcv.o",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/cases/adapt_down_fringe_m33/kernel_rv64gcv.o",
+      "/buddy-mlir/jlq/thesis/third_party/OpenBLAS-k230/libopenblas.a",
+      "-lm",
+      "-o",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/k230_mlir_closure.elf"
+    ],
+    "link_ms": 7218.739405,
+    "sha256": "916fde1f63815f5c796e010bcee58b4ffa717dbbd0444862a7f2aa8d5dabab0a",
+    "size_bytes": 298280,
+    "riscv_attributes": "Attribute Section: riscv\nFile Attributes\n  Tag_RISCV_stack_align: 16-bytes\n  Tag_RISCV_arch: \"rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zmmul1p0_zaamo1p0_zalrsc1p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0\"\n  Tag_RISCV_priv_spec: 1\n  Tag_RISCV_priv_spec_minor: 11",
+    "config_header_sha256": "800027fd7b04e1f7098da29f1cb66927c227508c2837340a819f7834d4d98cb4",
+    "elf_header": "ELF Header:\n  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00 \n  Class:                             ELF64\n  Data:                              2's complement, little endian\n  Version:                           1 (current)\n  OS/ABI:                            UNIX - System V\n  ABI Version:                       0\n  Type:                              EXEC (Executable file)\n  Machine:                           RISC-V\n  Version:                           0x1\n  Entry point address:               0x200000000\n  Start of program headers:          64 (bytes into file)\n  Start of section headers:          295272 (bytes into file)\n  Flags:                             0x5, RVC, double-float ABI\n  Size of this header:               64 (bytes)\n  Size of program headers:           56 (bytes)\n  Number of program headers:         3\n  Size of section headers:           64 (bytes)\n  Number of section headers:         47\n  Section header string table index: 46",
+    "entry_point": "0x200000000",
+    "static": true,
+    "rvv_instruction_matches": 452,
+    "disassembly": "/buddy-mlir/jlq/thesis/experiments/chapter6_application_validation/build/k230_mlir_closure/k230_mlir_closure.disassembly.txt",
+    "disassembly_sha256": "46311a0ccfaad8fdf5a94b5a00dcf0bb0db00f9f60ed39a8afc8bc56d0b2ba42",
+    "required_symbols": [
+      "main",
+      "cblas_sgemm",
+      "sgemm_kernel",
+      "_mlir_ciface_k230_mlir_direct_qkv_prefill_m32",
+      "_mlir_ciface_k230_contract_adapter_direct_qkv_prefill_m32",
+      "_mlir_ciface_k230_mlir_adapt_qkv_fringe_m17",
+      "_mlir_ciface_k230_contract_adapter_adapt_qkv_fringe_m17",
+      "_mlir_ciface_k230_mlir_adapt_down_fringe_m33",
+      "_mlir_ciface_k230_contract_adapter_adapt_down_fringe_m33"
+    ]
+  },
+  "reuse_audit": {
+    "chapter4_generator_freeze": {
+      "schema_version": 1,
+      "status": "frozen_before_k230_backend_generation",
+      "path": "/buddy-mlir/jlq/thesis/experiments/chapter4_space/scripts/chapter4lib.py",
+      "sha256": "84c0e11ca6ebb731a9b6ecad0441b1a79d64ea4301ee89169887c761b618d4ee",
+      "prefreeze_generalization": "conditional_parameters now reads packing.layout and call_convention from the selected Contract; selection, compatibility, scoring, and space-membership algorithms are unchanged",
+      "postfreeze_allowed_additions": [
+        "Contract descriptor",
+        "package-local candidate data",
+        "packing/call adapter",
+        "deployment and result-import code"
+      ]
+    },
+    "external_adapter_source": "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/runtime/k230_openblas_contract_bench.c",
+    "external_adapter_sha256": "1c54892150857d5c5be04e726ba045e4f664f24ac5e9fd7736fda41a8a9a9558",
+    "core_generator_modified_for_closure": false,
+    "new_compiler_pass_required": false,
+    "standard_lowering": "transform.annotate + convert-linalg-to-std"
+  },
+  "claim_boundary": "The experiment validates a representative MLIR-to-K230 adapter closure and a real model-code GEMM shape trace. It does not claim full-model execution, multithreaded speedup, or universal RISC-V backend portability."
+}

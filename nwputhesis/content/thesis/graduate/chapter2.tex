@@ -1,0 +1,327 @@
+% !TeX root = ../../../graduate.tex
+%% 第二章
+
+\chapter{相关理论与关键技术}
+\chaptermark{相关理论与关键技术}
+\label{chap:background}
+
+外部微内核不是一个可以脱离上下文替换的函数。调度既要保持 GEMM 语义，也要生成符合 packed panel 和调用 ABI 的数据路径。Transform Dialect 可以物化变换，但不会自行恢复这些接口条件。本章据此统一后文使用的概念和符号，分别讨论 GEMM 的分层实现、MLIR 与 Transform Dialect、有限候选空间中的自动调优，以及语义合法性、实现可接纳性和性能经济性三个判定层次。
+
+\section{GEMM 分层实现与微内核接口}
+
+设 $A\in\mathbb{R}^{M\times K}$、$B\in\mathbb{R}^{K\times N}$、$C\in\mathbb{R}^{M\times N}$。不考虑输入转置时，GEMM 的逐元素计算为
+
+\begin{equation}
+C_{ij}
+\leftarrow
+\beta C_{ij}
++
+\alpha\sum_{k=0}^{K-1}A_{ik}B_{kj},
+\qquad
+0\leq i<M,\quad 0\leq j<N .
+\label{eq:chapter2-gemm-element}
+\end{equation}
+
+忽略标量缩放等低阶操作，计算量约为 $2MNK$ 次浮点运算。朴素三重循环保持了式~\eqref{eq:chapter2-gemm-element} 的语义，却没有规定数据应在哪一级缓存中复用，也没有规定内层计算如何映射到寄存器和向量指令。高性能实现需要在多个存储层次之间组织数据搬移，再把规则的小块计算交给目标相关的微内核\cite{Dongarra1990Level3,Goto2008Anatomy}。
+
+\subsection{宏观分块与寄存器微内核}
+
+GEMM 的块级更新可以写为
+
+\begin{equation}
+C_{I,J}
+\leftarrow
+\beta C_{I,J}
++
+\alpha A_{I,P}B_{P,J},
+\label{eq:chapter2-block-update}
+\end{equation}
+
+其中 $I$、$J$ 和 $P$ 分别是 $M$、$N$ 和 $K$ 维上的索引区间。高性能库通常把三个区间进一步分层。$\mathrm{NC}$ 控制 $B$ 的较大列面板，$\mathrm{KC}$ 控制归约维面板深度，$\mathrm{MC}$ 控制 $A$ 的行面板。三者主要服务于缓存驻留和数据复用，取值会受到缓存容量、关联度、线程划分和 packing 成本影响\cite{Goto2008Anatomy,VanZee2015BLIS}。
+
+最内层计算由寄存器微内核完成。一次调用通常更新 $\mathrm{MR}\times\mathrm{NR}$ 的 $C$ 子块，并沿 $K$ 维累积。输出部分和尽量留在寄存器中，归约结束后再写回内存。$\mathrm{MR}$ 和 $\mathrm{NR}$ 因而与寄存器数量、向量宽度、加载方式和累加链数量直接相关。对于一个已经固定的外部微内核，这两个值是调用接口的一部分，不是可由上层调度任意改写的缓存参数。
+
+$K$ 维还可能带有步长条件。某些微内核每次循环消费固定数量的 $A$、$B$ 元素，或要求 $K$ 满足特定倍数。本文把这种条件记为 $K$-step。若真实 $K$ 不满足要求，调用方需要补零、分离尾部循环，或者转入其他实现。$\mathrm{MR}/\mathrm{NR}$ 与 $K$-step 描述微内核能够消费的基本计算块；$\mathrm{MC}/\mathrm{KC}/\mathrm{NC}$ 则描述外层实现如何安排这些计算块。前者主要决定接纳边界，后者通常影响性能排序。二者不能作为同一类参数处理。
+
+这种分层并不意味着宏观参数只受硬件容量决定。增大 $\mathrm{KC}$ 可能增加 packed panel 的复用，也可能扩大工作集并增加 packing 延迟；减小 $\mathrm{MC}$ 可降低单次缓冲区需求，却可能提高外层循环和数据搬移频率。外层块尺寸是否合适，需要结合目标主机和 workload 测量。相比之下，若微内核只接受固定 $\mathrm{MR}\times\mathrm{NR}$ 输出块，direct 路径就必须满足对应形状条件，或由 adapter 显式处理不整除区域。
+
+\subsection{Packing、stride、tail 与 ABI}
+
+微内核通常不直接读取原始矩阵。packing 把 $A$ 和 $B$ 的子块复制到连续缓冲区，并按微内核的消费顺序组织为 micro-panel。以行主序输入为例，原始 $A$、$B$ 的行步长和列步长由矩阵形状与布局决定；打包后面板采用独立的 panel stride，微内核按约定递增地址。即使两个候选具有相同的 $\mathrm{MR}$、$\mathrm{NR}$ 和 $\mathrm{KC}$，只要 panel order 或 panel stride 不同，二者也不能调用同一个外部微内核。
+
+packing 还承担布局规整工作。输入可以是 row-major 或 column-major，子视图也可能具有非单位 stride。打包器需要把这些访问关系转换为微内核要求的内部格式，并满足 alignment。数据复制带来额外成本，因此完整库通常在宏观循环中复用 packed panel。若上层编译器只调用一次微内核而没有实现相同复用结构，来自完整库的缓存分块参数未必仍然适用。
+
+边界处理分为 $M$、$N$ 和 $K$ 三类。$M$ 或 $N$ 不能被 $\mathrm{MR}$、$\mathrm{NR}$ 整除时，调用方可以选择专用 fringe kernel，也可以把有效区域复制到固定大小的临时块，调用主体微内核后再将有效元素写回。$K$ 尾部通常通过补零、独立余数循环或支持变长归约的接口处理。不同方法改变了所需缓冲区、额外计算和运行时分支，必须作为 adapt 路径的一部分记录，而不能把边界块静默标记为 direct。
+
+调用 ABI 规定微内核如何取得面板地址、输出地址、步长、$\alpha$、$\beta$ 和辅助结构。以 $\beta$ 为例，覆盖输出与累加到已有 $C$ 的语义不同。若 adapter 假定 $\beta=0$，却把带非零初值的输出交给微内核，形状与布局即使全部匹配，结果仍然错误。部分库还通过 auxiliary structure 传递下一面板地址、预取信息或其他上下文。编译器生成的外部调用必须与真实函数原型、参数含义和目标 ABI 一致。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.90\textwidth]{chapter2_gemm_layers_microkernel_interface.pdf}
+  \caption{GEMM 分层实现、packing 与微内核调用边界}
+  \label{fig:chapter2-gemm-layers}
+\end{figure}
+
+图~\ref{fig:chapter2-gemm-layers} 区分了微内核与调用方的职责。微内核计算固定的寄存器块，调用方把原始张量变成它能够读取和更新的数据对象。Contract 记录调用方必须满足的条件，不推断微内核内部如何使用寄存器，也不把缓存分块偏好升级为正确性条件。
+
+\subsection{完整库路径与外部微内核路径}
+
+BLIS 和 OpenBLAS 的完整 GEMM 入口包含处理器分派、宏观循环、packing、线程划分、边界处理和微内核调用\cite{VanZee2015BLIS,OpenMathLibOpenBLAS}。调用完整库时，应用只需提供符合 BLAS 接口的矩阵描述，库内部负责选择目标实现并建立配套数据路径。LIBXSMM 的运行时生成路径虽然组织方式不同，也会根据矩阵描述、数据类型和 ISA 生成或选择可调用代码\cite{Heinecke2016LIBXSMM}。
+
+外部微内核路径只复用完整实现中的内层计算。编译器必须承担被越过的职责，包括块遍历、面板打包、stride 构造、$\beta$ 语义、fringe 处理和外部符号绑定。线程分派、完整库中的 shape heuristic 以及其他 kernel 选择逻辑通常也不再自动生效。外部微内核能够被正确调用，并不表示生成路径已经复现完整库，更不表示它在性能上优于完整库。
+
+后文采用 direct、adapt、fallback 和 reject 四种处理结果。direct 表示候选已经满足目标微内核的调用条件；adapt 表示系统能通过 packing、补齐、临时缓冲、scatter 或 fringe 处理补足条件；fallback 表示候选不能调用该微内核，但通用 MLIR lowering 仍能正确执行；reject 表示当前系统没有安全的实现路径，需要在执行前拒绝。四类结果描述执行路径，不直接给出性能结论。
+
+表~\ref{tab:chapter2-core-terms} 汇总 Contract、候选空间和成本分析中的核心术语。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{核心术语与符号}
+  \label{tab:chapter2-core-terms}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.17\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\centering\arraybackslash}p{0.13\textwidth}
+    >{\centering\arraybackslash}p{0.13\textwidth}
+    @{}
+  }
+    \toprule
+    \makecell[c]{\textbf{符号}\\\textbf{或术语}} & \textbf{定义} &
+    \makecell[c]{\textbf{所属}\\\textbf{层次}} &
+    \makecell[c]{\textbf{主要使用}\\\textbf{位置}} \\
+    \midrule
+    $T$ & workload、dtype、$M/N/K$、布局、线程模式和目标能力组成的任务上下文 & L1、L2 & 第3、4章 \\
+    $C_k$ & 指定微内核 $k$ 的可接纳性契约 & L2 & 第3、4章 \\
+    $G_0$ & 尚未应用通用合法性检查的笛卡尔积参数空间 & 空间输入 & 第4、5章 \\
+    $G_1$ & 通过通用编译与执行条件检查的基础空间 & L1 & 第4、5章 \\
+    $\mathcal{C}$ & 经 Contract 约束、路径生成和活性规范化后，仅含 direct/adapt 的唯一候选空间，简称 C 空间 & L2 & 第4、5章 \\
+    $P$ & 定义在 $\mathcal{C}$ 上的可撤销软排序或采样策略，不改变接纳边界 & L3 & 第3至5章 \\
+    四类路径 & direct、adapt、fallback 和 reject & L2 & 第3至5章 \\
+    $q$ & 带参数、canonical key、路径、适配义务、诊断和 provenance 的候选记录 & L2、L3 & 第4、5章 \\
+    \makecell[c]{$D_{90}$\\$T_{90}$} & 90\% 池内最优候选密度，以及达到该阈值所需的唯一候选评价数 & L3 & 第5章 \\
+    \makecell[c]{$C_c$\\$C_{s,j}$\\$H_j$} & 全局校准成本、任务 $j$ 的搜索成本和预期调用次数 & L3 & 第5章 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+\section{MLIR 与 Transform Dialect}
+
+\subsection{MLIR 渐进 lowering 与 Structured Ops}
+
+MLIR 允许不同抽象层级的 operation、type 和 attribute 在同一基础设施中共存，并通过 Dialect 划分语义边界\cite{Lattner2020MLIR}。GEMM 在较高层可以表示为 \texttt{linalg.matmul}。该操作保留两个并行维和一个归约维，因而比已经展开的三重循环更适合作为 tiling、packing 和外部调用匹配的锚点。
+
+本研究的 lowering 链涉及多个 Dialect。Linalg Dialect 保存结构化算子及其迭代语义；Tensor Dialect 表示值语义下的张量和切片；MemRef Dialect 在 bufferization 后表示具有显式 shape、layout 与内存空间的缓冲区；SCF Dialect 承载外层循环和条件控制；Vector Dialect 表示 contraction、transfer 和目标无关向量操作；Func Dialect 保存函数边界与外部声明；LLVM Dialect 则连接 LLVM IR 和目标二进制。各层职责不同，微内核接入也不能只在其中一层完成。
+
+渐进 lowering 的典型过程是先在 Linalg 层识别和分块 GEMM，再生成 packed tensor 或 buffer，随后完成 bufferization、循环与向量 lowering，最后形成 LLVM Dialect 中的调用与地址计算。变换顺序会改变后续可见信息。过早降低会丢失结构化算子语义；过晚处理外部 ABI，则可能无法准确控制 memref stride、符号原型和 packed buffer 的生命周期。
+
+候选路径在结构化算子仍可识别时确定。数据布局和地址语义分别在 bufferization 前后处理，外部符号与实参则在 LLVM lowering 前确认。L1 语义检查贯穿整个过程，L2 接纳检查把目标微内核的条件投影到相应 IR 阶段。dtype 和目标 ISA 可以在任务级检查，panel stride 和实际调用参数则要等到 packing 或 bufferization 后才能核对。
+
+\subsection{Payload IR 与 Transform IR}
+
+Transform Dialect 把待变换程序称为 payload IR，把控制变换的程序称为 transform IR\cite{LLVMProjectTransformDialect,Luecke2025TransformDialect}。payload IR 保存 GEMM 及其逐步 lowering 后的表示，transform IR 保存匹配、变换顺序和参数。二者分离后，同一 payload 可以应用不同调度，同一 transform 模板也可以作用于结构兼容的多个 payload。
+
+transform IR 通过 handle 引用 payload 中的 operation 或 value。匹配操作先取得 \texttt{linalg.matmul} 等目标，tiling 或 packing 再消费相应 handle，并返回指向新 operation 的 handle。若一个变换删除了原 operation，后续步骤不能继续使用已经失效的 handle。自动生成 transform IR 时，生成器必须维护这组数据流关系，而不能只把变换名称按顺序拼接。
+
+parameter 用于携带 tile size、路径选择和其他编译期控制值。一个参数化 transform 模板可以保留 \texttt{tile\_m}、\texttt{tile\_n}、\texttt{tile\_k}、pack mode 和目标 callee 等槽位，再由候选记录实例化。Transform Dialect 由此承担调度物化，不负责决定参数域是否符合特定微内核。
+
+变换结果可以是成功、可恢复失败或不可恢复失败。silenceable failure 适合表示可选匹配没有成立，上层控制可以尝试 alternatives 或转入另一条调度；definite failure 表示当前变换序列不能继续。这里的 alternatives 是 transform 控制流，不等同于本文的四类接纳路径。前者处理 transform 执行结果，后者由 Contract、adapter 能力和通用 fallback 共同决定。即使 transform operation 成功，候选仍可能不满足外部微内核的 packing 或 ABI。
+
+\subsection{Transform 物化与外部调用}
+
+候选进入编译器后，系统先将 tile 和路径参数写入 transform IR。通用候选执行 tiling、可选 vectorization 和后续 lowering；微内核候选还要生成 packed panel、动态边界适配和外部调用占位。bufferization 把张量转换为实际缓冲区，调用适配器再将地址、stride、$\beta$ 与辅助结构转换为微内核 ABI。
+
+外部调用不是一次孤立 rewrite。若候选被标记为 adapt，生成流程必须物化对应义务，例如为 $K$ 尾部补零，为 $M/N$ fringe 分配临时 $C$ 块，调用后只 scatter 有效区域。direct 候选也要有已验证的 packing 和调用路径，只是无需动态边界补偿。fallback 不绑定目标微内核符号，继续走通用 MLIR lowering。
+
+生成结果需要在多个层次核对。Transform IR 用于检查候选参数是否实际进入变换；payload IR 和 LLVM IR 用于确认 packing、函数声明与调用位置；链接符号用于证明目标微内核进入二进制；运行时路径计数用于区分 direct、adapt 和 fallback；数值 reference 用于检查 GEMM 结果。单独出现一个外部符号不足以证明候选调用成立，静态路径标签也不能替代运行时证据。
+
+\section{自动调优与有限候选空间}
+
+\subsection{参数域、条件约束与候选记录}
+
+自动调优可写成有限候选集合上的带约束优化。设任务上下文为 $T$，原始参数向量为 $\theta=(\theta_1,\ldots,\theta_d)$，每个参数具有有限取值域 $\Theta_i$，则原始空间为
+
+\begin{equation}
+G_0(T)
+=
+\Theta_1(T)\times\Theta_2(T)\times\cdots\times\Theta_d(T).
+\label{eq:chapter2-g0}
+\end{equation}
+
+参数域可以依赖任务上下文。例如 tile 不应超过静态维度，某个 pack mode 只在目标微内核包可用时出现。条件参数只在特定路径上生效。若微内核路径完全替代了通用 Vector lowering，通用 \texttt{vectorize} 开关就不再影响输出。此时保留两个开关值会形成参数不同但执行意义相同的重复候选。
+
+$G_1$ 对 $G_0$ 应用通用语义、编译和执行条件，并保留可正确执行的通用或 fallback 候选；$\mathcal{C}$ 从 $G_1$ 中选择能够进入 direct/adapt 微内核路径的候选，再执行参数活性规范化。Performance Profile $P$ 只在 $\mathcal{C}$ 上改变排序或采样权重。用集合关系表示为
+
+\begin{equation}
+\mathcal{C}(T,C_k)
+\subseteq
+G_1(T)
+\subseteq
+G_0(T),
+\qquad
+P:\mathcal{C}\rightarrow\mathbb{R}.
+\label{eq:chapter2-space-relation}
+\end{equation}
+
+这里的 $P$ 不是新的可行域。删除或更换 $P$ 不应使 reject 候选变成 direct，也不应改变 fallback 的正确性边界。这个约束用于区分硬 Contract 和软性能信息。
+
+调优器消费的是 schedule token，而不是一串缺少语义的整数。候选记录写为
+
+\begin{equation}
+q
+=
+\langle
+\theta,\,
+\kappa,\,
+\pi,\,
+\mathcal{A},\,
+\delta,\,
+\rho
+\rangle ,
+\label{eq:chapter2-candidate-record}
+\end{equation}
+
+其中 $\kappa$ 是规范键（canonical key），$\pi$ 是执行路径，$\mathcal{A}$ 是适配义务，$\delta$ 是诊断记录，$\rho$ 是 provenance。候选是否可测由 feasibility 字段给出。规范键只保留当前路径中的活跃参数；后续章节还会用规范化 IR hash 检查不同 key 是否生成相同代码。
+
+\subsection{搜索预算与性能反馈}
+
+对候选 $q$、任务 $T$ 和目标环境 $h$，设运行时间目标为 $f(q;T,h)$，自动调优求解
+
+\begin{equation}
+q^{*}
+=
+\arg\min_{q\in\mathcal{S}_{\mathrm{feasible}}(T)}
+f(q;T,h).
+\label{eq:chapter2-tuning-objective}
+\end{equation}
+
+$f$ 通常需要经过 Transform 物化、编译、链接、运行和计时才能得到。一次 callback 是调优器提出候选并取得反馈的过程，但 callback 数不一定等于唯一候选评价数。调优器可能重复提出同一个规范键，也可能在编译前得到 reject。在线实验中的一次唯一评价可以触发编译和测量，冻结语料上的离线重放则只查询既有目标值。评估协议分别记录 callback budget、唯一候选查询数、实际编译数和实际测量数，避免把重复建议或离线查询写成新的性能证据。
+
+反馈不仅包含运行时间。候选可能在任务匹配、Contract 检查、Transform、编译、链接、数值检查或运行时路径核对阶段失败。只有通过当前协议全部检查的候选才进入性能比较。失败阶段和诊断字段保留在候选记录中，便于区分空间定义错误、adapter 能力不足和普通性能劣势。
+
+BaCO 能在给定参数空间中利用贝叶斯优化选择候选，并处理多类参数与约束\cite{Hellsten2023BaCO}。在本研究中，BaCO 是搜索执行器，其核心算法保持不变。空间生成器输出 schedule token，评估器返回 objective 与 feasibility。目标测量还可以校准软排序模型，但校准结果只作用于 $P$，不回写硬 Contract。
+
+搜索成本由多个部分组成。全局模型拟合或目标校准成本记为 $C_c$；任务 $j$ 上的候选生成、编译、测量和调优器运行成本合记为 $C_{s,j}$。二者都是一次性成本，需要由后续重复调用的运行收益摊销。若日志只记录了聚合搜索成本，就只能报告 $\sum_j C_{s,j}$，不能事后虚构逐任务分摊。
+
+\subsection{搜索收益}
+
+有限池上的搜索结果先相对于池内最优定义。设候选吞吐率为 $p(q,T)$，任务 $T$ 的已测候选池为 $\mathcal{S}_T$，则归一化性能为
+
+\begin{equation}
+r(q,T)
+=
+\frac{p(q,T)}
+{\max_{q'\in\mathcal{S}_T}p(q',T)}.
+\label{eq:chapter2-normalized-performance}
+\end{equation}
+
+$r=1$ 只表示候选达到当前冻结池内最优，不表示它是全局最优，也不表示它快于完整库。90\% 池内最优候选密度定义为
+
+\begin{equation}
+D_{90}(T)
+=
+\frac{
+\sum_{q\in\mathcal{S}_T}
+\mathbf{1}\!\left[r(q,T)\geq0.9\right]
+}{
+\left|\mathcal{S}_T\right|
+}.
+\label{eq:chapter2-d90}
+\end{equation}
+
+给定一条按唯一候选计数的搜索轨迹 $(q_1,q_2,\ldots)$，达到 90\% 池内最优所需的唯一候选评价数为
+
+\begin{equation}
+T_{90}(T)
+=
+\min\left\{
+u:
+\max_{1\leq i\leq u}r(q_i,T)\geq0.9
+\right\}.
+\label{eq:chapter2-t90}
+\end{equation}
+
+未在预算内达到阈值的轨迹需要单独记录，不能把预算上限当作真实 $T_{90}$。$D_{90}$ 描述高性能候选在池中的密度，$T_{90}$ 描述搜索过程经过多少次唯一候选评价到达该区域。在线评价可能包含新的编译和测量，离线重放中的评价只表示对冻结目标值的查询。二者回答的问题不同，也不能与实际测量次数混用。
+
+部署比较使用完整库性能而不是池内最优。设 $p_{\mathrm{gen}}(T)$ 是生成路径的选定性能，$p_{\mathrm{lib}}(T)$ 是相同线程、布局和计时协议下的完整库性能，则完整库性能比为
+
+\begin{equation}
+R_{\mathrm{lib}}(T)
+=
+\frac{p_{\mathrm{gen}}(T)}
+{p_{\mathrm{lib}}(T)}.
+\label{eq:chapter2-library-ratio}
+\end{equation}
+
+$R_{\mathrm{lib}}>1$ 才表示生成路径在该任务和协议下快于完整库。若多个 workload 需要联合部署，净价值写为
+
+\begin{equation}
+V(\mathbf{H})
+=
+\sum_j H_j\bigl(t_{b,j}-t_{o,j}\bigr)
+-
+C_c
+-
+\sum_j C_{s,j},
+\label{eq:chapter2-search-value}
+\end{equation}
+
+其中 $H_j$ 是任务 $j$ 的预期调用次数，$t_{b,j}$ 与 $t_{o,j}$ 分别是基线路径和搜索后路径的单次运行时间。只有 $V(\mathbf{H})$ 为正，运行收益才覆盖一次性成本。存在测量不确定性时，性能经济性评价使用 $V(\mathbf{H})$ 的 95\% 单侧置信下界。若该下界不大于零，就不把点估计上的小幅收益解释为可部署结论。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.80\textwidth]{chapter2_three_layer_boundary.pdf}
+  \caption{L1 语义合法性、L2 实现可接纳性与 L3 性能经济性}
+  \label{fig:chapter2-three-layer-boundary}
+\end{figure}
+
+\section{三层问题边界与评价对象}
+
+图~\ref{fig:chapter2-three-layer-boundary} 将相关判定分为三个层次。L1 判断调度变换是否保持 GEMM 语义。它关心 payload 与 Transform 的合法性、编译结果和数值 reference，不指定某个外部微内核。一个候选即使最终走 fallback，只要结果正确，仍可通过 L1。
+
+L2 判断候选能否调用指定外部微内核。判定对象包括 Contract、目标能力、packing、stride、tail、ABI 和 adapter。L2 的结果不是简单布尔值。direct 与 adapt 进入微内核路径，fallback 放弃该目标但保留正确执行，reject 表示当前系统无安全路径。Compatibility Checker、独立变异用例、预测路径与真实路径一致性属于这一层。
+
+L3 判断候选如何排序，以及搜索是否值得发生。目标测量、候选池、软排序、完整库基线、搜索成本和预期调用次数都位于 L3。L3 不能放宽 L1 或 L2 条件。性能模型可以把某个 direct 候选排在前面，却不能把 ABI 不匹配的候选改成可调用；池内最优也不能替代完整库比较。
+
+三个层次有先后依赖，但评价指标不能互换。数值正确不证明目标微内核实际被调用，外部符号出现在二进制中也不证明运行时走了该路径。相同地，较高的可调用候选密度说明空间接纳结构更集中，不直接说明候选快于完整库。表~\ref{tab:chapter2-three-layer-evaluation} 汇总各层判定对象和后文指标。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{三层问题的判定对象与评价指标}
+  \label{tab:chapter2-three-layer-evaluation}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.12\textwidth}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.29\textwidth}
+    @{}
+  }
+    \toprule
+    \textbf{层次} & \textbf{判定问题} & \textbf{主要对象} & \textbf{评价方式} \\
+    \midrule
+    L1 语义合法性
+      & 调度变换是否保持算子语义
+      & payload IR、transform IR、编译结果与数值输出
+      & IR verifier、编译检查、数值 reference 与容差 \\
+    L2 实现可接纳性
+      & 调度能否调用指定外部微内核
+      & Contract、target、packing、stride、tail、ABI 与 adapter
+      & checker、误接纳与误拒绝、诊断、预测路径与真实路径一致性 \\
+    L3 性能与经济性
+      & 可接纳候选如何排序，搜索能否产生正向部署收益
+      & 目标测量、软排序、完整库基线、搜索成本与预期调用次数
+      & $D_{90}$、$T_{90}$、固定预算结果、迁移统计、$R_{\mathrm{lib}}$ 与盈亏平衡分析 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+方法主体位于 L2，并为 L3 提供结构化候选。第三章从固定源码事实建立 Contract，第四章把 Contract 编译为路径和唯一候选，第五章分别验证 L2 的接纳结论与 L3 的搜索结果。L1 由 MLIR 验证、编译链和数值检查共同承担。这样的分工可以避免把性能较差写成接口失败，也避免把正确 fallback 写成微内核替换成功。
+
+\section{本章小结}
+
+GEMM 的宏观缓存分块与寄存器微内核处于不同实现层次，packing、stride、tail 和 ABI 共同决定外部微内核的调用条件。MLIR 保存渐进 lowering 中的程序语义，Transform Dialect 负责物化参数化调度，但二者不会自动生成目标微内核的接纳边界。自动调优在有限候选空间中分配测量预算，池内搜索质量与完整库部署收益需要分别评价。L1、L2 和 L3 的划分固定了语义正确、实现接纳和性能经济性的证据边界。下一章将在这些定义之上建立带 provenance 的 Fact、Contract 与 Performance Profile。

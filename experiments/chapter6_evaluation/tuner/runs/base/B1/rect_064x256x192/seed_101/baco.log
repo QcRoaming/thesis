@@ -1,0 +1,2341 @@
+application_name: chapter6_kernel_aware_gemm
+optimization_objectives: ['runtime_ms']
+optimization_method: bayesian_optimization
+optimization_iterations: 21
+design_of_experiment: {'doe_type': 'random sampling', 'number_of_samples': 4, 'allow_repetitions': False}
+models: {'model': 'gaussian_process', 'bootstrap': True, 'max_features': 0.5, 'min_samples_split': 2, 'number_of_trees': 200, 'use_all_data_to_fit_mean': False, 'use_all_data_to_fit_variance': False}
+GP_model: gpy
+hyperparameter_optimization_iterations: 1
+acquisition_function: EI
+normalize_inputs: True
+predict_noiseless: False
+allow_duplicate_samples: False
+local_search_random_points: 100
+local_search_starting_points: 5
+input_parameters: {'schedule_index': {'parameter_type': 'categorical', 'values': ['s000', 's001', 's002', 's003', 's004', 's005', 's006', 's007', 's008', 's009', 's010', 's011', 's012', 's013', 's014', 's015', 's016', 's017', 's018', 's019', 's020', 's021', 's022', 's023', 's024', 's025', 's026', 's027'], 'parameter_default': 's000', 'transform': 'none', 'prior': 'uniform', 'prior_parameters': []}}
+feasible_output: {'enable_feasible_predictor': True, 'name': 'Valid', 'true_value': 'True', 'false_value': 'False', 'feasibility_threshold': 0.1}
+run_directory: /buddy-mlir/jlq/thesis/experiments/chapter6_evaluation/tuner/runs/base/B1/rect_064x256x192/seed_101
+log_file: /buddy-mlir/jlq/thesis/experiments/chapter6_evaluation/tuner/runs/base/B1/rect_064x256x192/seed_101/baco.log
+output_data_file: baco_samples.csv
+acquisition_function_optimizer: local_search
+epsilon_greedy_threshold: 0
+evolution_crossover: False
+evolution_generations: 150
+evolution_population_size: 50
+exploration_augmentation: 0.0001
+baco_mode: {'mode': 'default'}
+lengthscale_prior: {'name': 'none', 'parameters': [1.3, 0.1]}
+local_search_from_best: True
+local_search_improvement_threshold: 0
+local_search_step_size: 0.03
+log_acq_value: False
+log_transform_output: False
+model_good_quantile: 0.05
+model_weight: 10
+multistart_hyperparameter_optimization: False
+mutation_rate: 1
+naive_cot_rs: False
+noise: True
+noise_prior: {'name': 'none'}
+number_of_repetitions: 1
+objective_value_target: -9999
+outputscale_prior: {'name': 'none'}
+prior_estimation_file: samples.csv
+prior_estimation_quantile: 0.1
+prior_floor: 1e-06
+prior_limit_estimation_points: 10000
+regularize_evolution: False
+reoptimise_hyperparameters_interval: 1
+resume_optimization: False
+resume_optimization_file: output_samples.csv
+reuse_gp_hyperparameters: False
+standardize_objectives: True
+time_budget: -1
+timestamp: Timestamp
+use_STGP: True
+
+schedule_index,runtime_ms,Valid,timestamp
+tensor(0),3.4291799068450928,True,1
+tensor(11),2.3123250007629395,True,1
+tensor(17),0.17361199855804443,True,1
+tensor(6),0.1839739978313446,True,2
+
+
+End of doe/resume phase, the number of evaluated configurations is: 4
+
+End of DoE - Time     0.0109 sec
+Starting optimization iteration: 1 sample no: 4
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                     250.62851131  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[17] [0;0m  |                     250.26903816  |      +ve      |        
+  [1m[18] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[20] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.76980880  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.7698088  0.         0.         0.        ]
+ [0.         0.7698088  0.         0.        ]
+ [0.         0.         0.7698088  0.76978835]
+ [0.         0.         0.76978835 0.7698088 ]]
+End of training - Time       0.63 sec
+Model fitting time     0.6308 sec
+Total RS time     0.0007 sec
+Optimization function time     0.0158 sec
+Starting local search on configuration: <18.0> with acq. val. 0.1401809559843973
+Best neighbour: <18.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.1401809559843973
+Best neighbour: <21.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 0.1401809559843973
+Best neighbour: <20.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Starting local search on configuration: <19.0> with acq. val. 0.1401809559843973
+Best neighbour: <19.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.1401809559843973
+Best neighbour: <22.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 8.082746074378252e-06
+Best neighbour: <1.0> with acq. val. 0.1401809559843973
+Best neighbour: <1.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Starting local search on configuration: <6.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.1401809559843973
+Best neighbour: <1.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Starting local search on configuration: <11.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.1401809559843973
+Best neighbour: <1.0> with acq. val. 0.1401809559843973
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local minimum found!
+Multi-start LS time     0.4457 sec
+Best found configuration: <18.0>
+obj mean:1.5247726440429688  obj std:1.619710087776184 
+f*:-0.834199070930481  mu:-0.4354396527503823  sigma:0.7472907275584437  feasibility:1.0  p1:-0.11836572032215192 p2:0.25854667630654926  alpha:0.14018095598439734  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.853310982608054
+Local search time     0.4862 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(18),1.8333369493484497,True,1128
+
+Black box function time     0.0069 sec
+Total iteration time     1.1243 sec
+Starting optimization iteration: 2 sample no: 5
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       1.29852474  |      +ve      |        
+  [1m[1]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                     128.05546972  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                       3.49890377  |      +ve      |        
+  [1m[19] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[20] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.95599468  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.95599468 0.63387995 0.         0.         0.6033912 ]
+ [0.63387995 0.95599468 0.         0.         0.89565119]
+ [0.         0.         0.95599468 0.         0.        ]
+ [0.         0.         0.         0.95599468 0.        ]
+ [0.6033912  0.89565119 0.         0.         0.95599468]]
+End of training - Time       0.25 sec
+Model fitting time     0.2452 sec
+Total RS time     0.0006 sec
+Optimization function time     0.0051 sec
+Starting local search on configuration: <16.0> with acq. val. 0.020288861921017406
+Best neighbour: <16.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.020288861921017406
+Best neighbour: <21.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 0.020288861921017406
+Best neighbour: <20.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Starting local search on configuration: <19.0> with acq. val. 0.020288861921017406
+Best neighbour: <19.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.020288861921017406
+Best neighbour: <22.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 8.329883408250876e-06
+Best neighbour: <1.0> with acq. val. 0.020288861921017406
+Best neighbour: <1.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Starting local search on configuration: <6.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.020288861921017406
+Best neighbour: <1.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Starting local search on configuration: <18.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.020288861921017406
+Best neighbour: <1.0> with acq. val. 0.020288861921017406
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local minimum found!
+Multi-start LS time     0.1803 sec
+Best found configuration: <16.0>
+obj mean:1.5864856243133545  obj std:1.409481406211853 
+f*:-1.0024067163467407  mu:0.3094458242631639  sigma:0.8308840263165704  feasibility:1.0  p1:-0.07500415544385368 p2:0.09529301736487109  alpha:0.020288861921017406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.692742313503093
+Local search time     0.1939 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(16),2.016653060913086,True,1575
+
+Black box function time     0.0087 sec
+Total iteration time     0.4480 sec
+Starting optimization iteration: 3 sample no: 6
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000011  |      +ve      |        
+  [1m[1]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       5.93855961  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                     389.86430064  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                       9.69630315  |      +ve      |        
+  [1m[19] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[20] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.19086908  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.19086908 0.         0.         0.         0.        ]
+ [0.         1.19086908 0.         0.         1.15367143]
+ [0.         0.         1.19086908 0.         0.        ]
+ [0.         0.         0.         1.19086908 0.        ]
+ [0.         1.15367143 0.         0.         1.19086908]]
+End of training - Time       0.15 sec
+Model fitting time     0.1478 sec
+Total RS time     0.0006 sec
+Optimization function time     0.0032 sec
+Starting local search on configuration: <19.0> with acq. val. 0.03237122152677298
+Best neighbour: <19.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.03237122152677298
+Best neighbour: <21.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 0.03237122152677298
+Best neighbour: <20.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.03237122152677298
+Best neighbour: <22.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Starting local search on configuration: <15.0> with acq. val. 0.03237122152677298
+Best neighbour: <15.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 8.329993506473855e-06
+Best neighbour: <1.0> with acq. val. 0.03237122152677298
+Best neighbour: <1.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Starting local search on configuration: <6.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.03237122152677298
+Best neighbour: <1.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Starting local search on configuration: <18.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.03237122152677298
+Best neighbour: <1.0> with acq. val. 0.03237122152677298
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local minimum found!
+Multi-start LS time     0.1368 sec
+Best found configuration: <19.0>
+obj mean:1.6581802368164062  obj std:1.2728514671325684 
+f*:-1.1663326025009155  mu:0.1558817343499661  sigma:0.9291553575003989  feasibility:1.0  p1:-0.10227887572353729 p2:0.13465009725031027  alpha:0.03237122152677298  w:tensor(1., dtype=torch.float64)
+log EI value: -1.489840912202999
+Local search time     0.1499 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(19),2.063433885574341,True,1881
+
+Black box function time     0.0107 sec
+Total iteration time     0.3087 sec
+Starting optimization iteration: 4 sample no: 7
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.88378855  |      +ve      |        
+  [1m[1]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       6.03991183  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                     706.02315568  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                       9.84130802  |      +ve      |        
+  [1m[19] [0;0m  |                      38.94134719  |      +ve      |        
+  [1m[20] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.44929128  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.44929128 0.64461    0.         0.         0.65033572]
+ [0.64461    1.44929128 0.         0.         1.40542795]
+ [0.         0.         1.44929128 0.         0.        ]
+ [0.         0.         0.         1.44929128 0.        ]
+ [0.65033572 1.40542795 0.         0.         1.44929128]]
+End of training - Time       0.25 sec
+Model fitting time     0.2523 sec
+Total RS time     0.0010 sec
+Optimization function time     0.0084 sec
+Starting local search on configuration: <15.0> with acq. val. 0.03005378799726531
+Best neighbour: <15.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.03005378799726531
+Best neighbour: <21.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 0.03005378799726531
+Best neighbour: <20.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.03005378799726531
+Best neighbour: <22.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Starting local search on configuration: <13.0> with acq. val. 0.03005378799726531
+Best neighbour: <13.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 8.330106347192367e-06
+Best neighbour: <1.0> with acq. val. 0.03005378799726531
+Best neighbour: <1.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Starting local search on configuration: <6.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.03005378799726531
+Best neighbour: <1.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Starting local search on configuration: <18.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.03005378799726531
+Best neighbour: <1.0> with acq. val. 0.03005378799726531
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local minimum found!
+Multi-start LS time     0.1975 sec
+Best found configuration: <15.0>
+obj mean:1.7160733938217163  obj std:1.1720013618469238 
+f*:-1.316091775894165  mu:0.2180339503476425  sigma:1.0234212750510336  feasibility:1.0  p1:-0.10267339044787309 p2:0.1327271784451384  alpha:0.03005378799726531  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5221007814772036
+Local search time     0.2252 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(15),3.6733078956604004,True,2370
+
+Black box function time     0.0157 sec
+Total iteration time     0.4936 sec
+Starting optimization iteration: 5 sample no: 8
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.99245564  |      +ve      |        
+  [1m[1]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       6.70732840  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.78269008  |      +ve      |        
+  [1m[16] [0;0m  |                     491.27545535  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                      10.88747876  |      +ve      |        
+  [1m[19] [0;0m  |                      43.16530604  |      +ve      |        
+  [1m[20] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.46914336  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.46914336 0.75417486 0.         0.         0.75987917]
+ [0.75417486 1.46914336 0.         0.         1.43277379]
+ [0.         0.         1.46914336 0.         0.        ]
+ [0.         0.         0.         1.46914336 0.        ]
+ [0.75987917 1.43277379 0.         0.         1.46914336]]
+End of training - Time       0.37 sec
+Model fitting time     0.3710 sec
+Total RS time     0.0008 sec
+Optimization function time     0.0090 sec
+Starting local search on configuration: <20.0> with acq. val. 0.030190812896196406
+Best neighbour: <20.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.030190812896196406
+Best neighbour: <22.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.030190812896196406
+Best neighbour: <21.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.030190812896196406
+Best neighbour: <23.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Starting local search on configuration: <13.0> with acq. val. 0.030190812896196406
+Best neighbour: <13.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 8.330046920492888e-06
+Best neighbour: <1.0> with acq. val. 0.03019081289619642
+Best neighbour: <1.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Starting local search on configuration: <6.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.03019081289619642
+Best neighbour: <1.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Starting local search on configuration: <18.0> with acq. val. 0.0
+Best neighbour: <1.0> with acq. val. 0.03019081289619642
+Best neighbour: <1.0> with acq. val. 0.03019081289619642
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local minimum found!
+Multi-start LS time     0.1423 sec
+Best found configuration: <1.0>
+obj mean:1.9607276916503906  obj std:1.2869367599487305 
+f*:-1.3886585235595703  mu:0.15436896552077412  sigma:1.0290711968287973  feasibility:1.0  p1:-0.10318515022756511 p2:0.13337596312376152  alpha:0.030190812896196406  w:tensor(1., dtype=torch.float64)
+log EI value: -1.5201251933174251
+Local search time     0.1622 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(1),0.15240700542926788,True,2920
+
+Black box function time     0.0100 sec
+Total iteration time     0.5437 sec
+Starting optimization iteration: 6 sample no: 9
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       6.59599200  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                   25504.49022814  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                      10.74458391  |      +ve      |        
+  [1m[19] [0;0m  |                      42.39559132  |      +ve      |        
+  [1m[20] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.30302207  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.30302207 0.         0.         0.         0.        ]
+ [0.         1.30302207 0.         0.         1.26976213]
+ [0.         0.         1.30302207 0.         0.        ]
+ [0.         0.         0.         1.30302207 0.        ]
+ [0.         1.26976213 0.         0.         1.30302207]]
+End of training - Time       0.31 sec
+Model fitting time     0.3078 sec
+Total RS time     0.0007 sec
+Optimization function time     0.0071 sec
+Starting local search on configuration: <20.0> with acq. val. 0.04042037634975436
+Best neighbour: <20.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.04042037634975436
+Best neighbour: <22.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.04042037634975436
+Best neighbour: <21.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.04042037634975436
+Best neighbour: <23.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Starting local search on configuration: <13.0> with acq. val. 0.04042037634975436
+Best neighbour: <13.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 8.330093353860009e-06
+Best neighbour: <2.0> with acq. val. 0.04042037634975432
+Best neighbour: <2.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 0.0
+Best neighbour: <2.0> with acq. val. 0.04042037634975432
+Best neighbour: <2.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Starting local search on configuration: <6.0> with acq. val. 0.0
+Best neighbour: <2.0> with acq. val. 0.04042037634975432
+Best neighbour: <2.0> with acq. val. 0.04042037634975432
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local minimum found!
+Multi-start LS time     0.1523 sec
+Best found configuration: <20.0>
+obj mean:1.759803295135498  obj std:1.3462973833084106 
+f*:-1.1939384937286377  mu:0.11062112206305841  sigma:0.971974559600419  feasibility:1.0  p1:-0.11709713061008699 p2:0.15751750695984135  alpha:0.04042037634975436  w:tensor(1., dtype=torch.float64)
+log EI value: -1.39339964713292
+Local search time     0.1700 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(20),0.09141600131988525,True,3408
+
+Black box function time     0.0112 sec
+Total iteration time     0.4893 sec
+Starting optimization iteration: 7 sample no: 10
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      71.42687494  |      +ve      |        
+  [1m[2]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                      95.32138489  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000317  |      +ve      |        
+  [1m[17] [0;0m  |                     176.33838886  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00000010  |      +ve      |        
+  [1m[20] [0;0m  |                      23.56501282  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.80665660  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.8066566  0.         0.         0.         0.        ]
+ [0.         0.8066566  0.         0.         0.        ]
+ [0.         0.         0.8066566  0.80656102 0.        ]
+ [0.         0.         0.80656102 0.8066566  0.        ]
+ [0.         0.         0.         0.         0.8066566 ]]
+End of training - Time       0.21 sec
+Model fitting time     0.2098 sec
+Total RS time     0.0006 sec
+Optimization function time     0.0064 sec
+Starting local search on configuration: <13.0> with acq. val. 0.1069925925459844
+Best neighbour: <13.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.1069925925459844
+Best neighbour: <22.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.1069925925459844
+Best neighbour: <21.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.1069925925459844
+Best neighbour: <23.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.1069925925459844
+Best neighbour: <12.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.291907255839282e-06
+Best neighbour: <2.0> with acq. val. 0.10699259254598484
+Best neighbour: <2.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <2.0> with acq. val. 0.10699259254598484
+Best neighbour: <2.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 0.0
+Best neighbour: <2.0> with acq. val. 0.10699259254598484
+Best neighbour: <2.0> with acq. val. 0.10699259254598484
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local minimum found!
+Multi-start LS time     0.1430 sec
+Best found configuration: <2.0>
+obj mean:1.59296452999115  obj std:1.3745826482772827 
+f*:-1.0923668146133423  mu:-0.5474041763652604  sigma:0.7649517684693727  feasibility:1.0  p1:-0.12975959868629816 p2:0.23675219123228256  alpha:0.1069925925459844  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9706462889294049
+Local search time     0.1586 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(2),0.1956939995288849,True,3788
+
+Black box function time     0.0100 sec
+Total iteration time     0.3787 sec
+Starting optimization iteration: 8 sample no: 11
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      53.62700229  |      +ve      |        
+  [1m[2]  [0;0m  |                     144.46469161  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                  285193.05686292  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[17] [0;0m  |                     163.46132724  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000074  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[20] [0;0m  |                      18.26170452  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.91602863  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.91602863 0.         0.         0.         0.        ]
+ [0.         0.91602863 0.         0.         0.        ]
+ [0.         0.         0.91602863 0.91600006 0.        ]
+ [0.         0.         0.91600006 0.91602863 0.        ]
+ [0.         0.         0.         0.         0.91602863]]
+End of training - Time       0.47 sec
+Model fitting time     0.4681 sec
+Total RS time     0.0009 sec
+Optimization function time     0.0053 sec
+Starting local search on configuration: <13.0> with acq. val. 0.13325271281968973
+Best neighbour: <13.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.13325271281968973
+Best neighbour: <22.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.13325271281968973
+Best neighbour: <21.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.13325271281968973
+Best neighbour: <23.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.13325271281968973
+Best neighbour: <12.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.30723668791901e-06
+Best neighbour: <3.0> with acq. val. 0.13325271281968973
+Best neighbour: <3.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.13325271281968973
+Best neighbour: <3.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.13325271281968973
+Best neighbour: <3.0> with acq. val. 0.13325271281968973
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local minimum found!
+Multi-start LS time     0.1715 sec
+Best found configuration: <13.0>
+obj mean:1.465939998626709  obj std:1.3704078197479248 
+f*:-1.0030035972595215  mu:-0.4983654140624836  sigma:0.8151525567631942  feasibility:1.0  p1:-0.13521634859971213 p2:0.26846906141940186  alpha:0.13325271281968973  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8753239406456395
+Local search time     0.1858 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(13),3.454533100128174,True,4453
+
+Black box function time     0.0118 sec
+Total iteration time     0.6659 sec
+Starting optimization iteration: 9 sample no: 12
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      98.62447383  |      +ve      |        
+  [1m[2]  [0;0m  |                      73.86632843  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                     144.92187041  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000017  |      +ve      |        
+  [1m[17] [0;0m  |                     181.82702096  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00001396  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00000003  |      +ve      |        
+  [1m[20] [0;0m  |                      16.75202641  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.91828226  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.91828226 0.         0.         0.         0.        ]
+ [0.         0.91828226 0.         0.         0.        ]
+ [0.         0.         0.91828226 0.91822268 0.        ]
+ [0.         0.         0.91822268 0.91828226 0.        ]
+ [0.         0.         0.         0.         0.91828226]]
+End of training - Time       0.56 sec
+Model fitting time     0.5559 sec
+Total RS time     0.0028 sec
+Optimization function time     0.0158 sec
+Starting local search on configuration: <12.0> with acq. val. 0.12453381352202683
+Best neighbour: <12.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.12453381352202683
+Best neighbour: <22.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Starting local search on configuration: <21.0> with acq. val. 0.12453381352202683
+Best neighbour: <21.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.12453381352202683
+Best neighbour: <23.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Starting local search on configuration: <10.0> with acq. val. 0.12453381352202683
+Best neighbour: <10.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.313495333222315e-06
+Best neighbour: <3.0> with acq. val. 0.12453381352202683
+Best neighbour: <3.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.12453381352202683
+Best neighbour: <3.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.12453381352202683
+Best neighbour: <3.0> with acq. val. 0.12453381352202683
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local minimum found!
+Multi-start LS time     0.5471 sec
+Best found configuration: <12.0>
+obj mean:1.6316560506820679  obj std:1.4271756410598755 
+f*:-1.0792224407196045  mu:-0.5399464061485801  sigma:0.8161511680234381  feasibility:1.0  p1:-0.13718781459604332 p2:0.26172162811807015  alpha:0.12453381352202683  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9047127125666029
+Local search time     0.5882 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(12),0.11673100292682648,True,5609
+
+Black box function time     0.0109 sec
+Total iteration time     1.1557 sec
+Starting optimization iteration: 10 sample no: 13
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      84.27676243  |      +ve      |        
+  [1m[2]  [0;0m  |                      80.96684383  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                     172.53575139  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                      31.40013639  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[17] [0;0m  |                  241754.68818095  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[20] [0;0m  |                      21.72359085  |      +ve      |        
+  [1m[21] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.93848615  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.93848615 0.         0.         0.         0.        ]
+ [0.         0.93848615 0.         0.         0.        ]
+ [0.         0.         0.93848615 0.93845988 0.        ]
+ [0.         0.         0.93845988 0.93848615 0.        ]
+ [0.         0.         0.         0.         0.93848615]]
+End of training - Time       0.62 sec
+Model fitting time     0.6215 sec
+Total RS time     0.0016 sec
+Optimization function time     0.0108 sec
+Starting local search on configuration: <21.0> with acq. val. 0.1388792573522796
+Best neighbour: <21.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.1388792573522796
+Best neighbour: <23.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.1388792573522796
+Best neighbour: <22.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Starting local search on configuration: <24.0> with acq. val. 0.1388792573522796
+Best neighbour: <24.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Starting local search on configuration: <10.0> with acq. val. 0.1388792573522796
+Best neighbour: <10.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.303163205220776e-06
+Best neighbour: <3.0> with acq. val. 0.1388792573522796
+Best neighbour: <3.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.1388792573522796
+Best neighbour: <3.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.1388792573522796
+Best neighbour: <3.0> with acq. val. 0.1388792573522796
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local minimum found!
+Multi-start LS time     0.2356 sec
+Best found configuration: <21.0>
+obj mean:1.5151233673095703  obj std:1.4295568466186523 
+f*:-0.9959082007408142  mu:-0.4998998975418978  sigma:0.8250839761414767  feasibility:1.0  p1:-0.13584736397542038 p2:0.2747266213277  alpha:0.1388792573522796  w:tensor(1., dtype=torch.float64)
+log EI value: -0.8573626145226331
+Local search time     0.2667 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(21),3.7012779712677,True,6509
+
+Black box function time     0.0417 sec
+Total iteration time     0.9303 sec
+Starting optimization iteration: 11 sample no: 14
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      74.41749666  |      +ve      |        
+  [1m[2]  [0;0m  |                      66.94775490  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                     112.92842325  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                      28.45445599  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00001047  |      +ve      |        
+  [1m[17] [0;0m  |                     279.34416260  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00384492  |      +ve      |        
+  [1m[20] [0;0m  |                      13.87513273  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.77782893  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.77782893 0.         0.         0.         0.        ]
+ [0.         0.77782893 0.         0.         0.        ]
+ [0.         0.         0.77782893 0.7777698  0.        ]
+ [0.         0.         0.7777698  0.77782893 0.        ]
+ [0.         0.         0.         0.         0.77782893]]
+End of training - Time       0.19 sec
+Model fitting time     0.1912 sec
+Total RS time     0.0009 sec
+Optimization function time     0.0048 sec
+Starting local search on configuration: <10.0> with acq. val. 0.10758309697897649
+Best neighbour: <10.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.10758309697897649
+Best neighbour: <23.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.10758309697897649
+Best neighbour: <22.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Starting local search on configuration: <24.0> with acq. val. 0.10758309697897649
+Best neighbour: <24.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Starting local search on configuration: <9.0> with acq. val. 0.10758309697897649
+Best neighbour: <9.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.317387234087732e-06
+Best neighbour: <3.0> with acq. val. 0.10758309697897607
+Best neighbour: <3.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.10758309697897607
+Best neighbour: <3.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.10758309697897607
+Best neighbour: <3.0> with acq. val. 0.10758309697897607
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local minimum found!
+Multi-start LS time     0.1273 sec
+Best found configuration: <10.0>
+obj mean:1.6712772846221924  obj std:1.492583990097046 
+f*:-1.0584739446640015  mu:-0.5338700782620123  sigma:0.7511262188269465  feasibility:1.0  p1:-0.12719593910492988 p2:0.23477903608390638  alpha:0.1075830969789765  w:tensor(0.99999999999999988898, dtype=torch.float64)
+log EI value: -0.9682559579020942
+Local search time     0.1417 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(10),3.4255850315093994,True,6884
+
+Black box function time     0.0276 sec
+Total iteration time     0.3613 sec
+Starting optimization iteration: 12 sample no: 15
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      82.96828835  |      +ve      |        
+  [1m[2]  [0;0m  |                      79.70306496  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                     169.91699249  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000181  |      +ve      |        
+  [1m[12] [0;0m  |                      30.92362559  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000050  |      +ve      |        
+  [1m[17] [0;0m  |                  283237.26897864  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00004162  |      +ve      |        
+  [1m[20] [0;0m  |                      21.38407819  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.81738556  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.81738556 0.         0.         0.         0.        ]
+ [0.         0.81738556 0.         0.         0.        ]
+ [0.         0.         0.81738556 0.81736197 0.        ]
+ [0.         0.         0.81736197 0.81738556 0.        ]
+ [0.         0.         0.         0.         0.81738556]]
+End of training - Time       1.11 sec
+Model fitting time     1.1080 sec
+Total RS time     0.0007 sec
+Optimization function time     0.0062 sec
+Starting local search on configuration: <24.0> with acq. val. 0.10585130580299576
+Best neighbour: <24.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Starting local search on configuration: <9.0> with acq. val. 0.10585130580299576
+Best neighbour: <9.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.10585130580299576
+Best neighbour: <22.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Starting local search on configuration: <23.0> with acq. val. 0.10585130580299576
+Best neighbour: <23.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Starting local search on configuration: <26.0> with acq. val. 0.10585130580299576
+Best neighbour: <26.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.301406270157213e-06
+Best neighbour: <3.0> with acq. val. 0.10585130580299532
+Best neighbour: <3.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.10585130580299532
+Best neighbour: <3.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.10585130580299532
+Best neighbour: <3.0> with acq. val. 0.10585130580299532
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local minimum found!
+Multi-start LS time     0.1533 sec
+Best found configuration: <24.0>
+obj mean:1.7882311344146729  obj std:1.5079293251037598 
+f*:-1.125261664390564  mu:-0.5688753632072139  sigma:0.7700116062758416  feasibility:1.0  p1:-0.13073674098755622 p2:0.23658804679055198  alpha:0.10585130580299576  w:tensor(1., dtype=torch.float64)
+log EI value: -0.9753037800674549
+Local search time     0.1685 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(24),2.1439049243927,True,8189
+
+Black box function time     0.0197 sec
+Total iteration time     1.2965 sec
+Starting optimization iteration: 13 sample no: 16
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                     732.01879150  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000876  |      +ve      |        
+  [1m[2]  [0;0m  |                       0.00000050  |      +ve      |        
+  [1m[3]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000111  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                     578.59393479  |      +ve      |        
+  [1m[11] [0;0m  |                       1.05940566  |      +ve      |        
+  [1m[12] [0;0m  |                       0.00007856  |      +ve      |        
+  [1m[13] [0;0m  |                      63.13174865  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       6.68742313  |      +ve      |        
+  [1m[16] [0;0m  |                       0.08389367  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000221  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00039314  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[20] [0;0m  |                       0.00151694  |      +ve      |        
+  [1m[21] [0;0m  |                       6.17468464  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       0.88792800  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.80272656  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.80272656 0.44695008 0.         0.         0.        ]
+ [0.44695008 0.80272656 0.         0.         0.        ]
+ [0.         0.         0.80272656 0.         0.        ]
+ [0.         0.         0.         0.80272656 0.        ]
+ [0.         0.         0.         0.         0.80272656]]
+End of training - Time       0.38 sec
+Model fitting time     0.3792 sec
+Total RS time     0.0007 sec
+Optimization function time     0.0041 sec
+Starting local search on configuration: <23.0> with acq. val. 0.00265549446276302
+Best neighbour: <23.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Starting local search on configuration: <8.0> with acq. val. 0.00265549446276302
+Best neighbour: <8.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Starting local search on configuration: <9.0> with acq. val. 0.00265549446276302
+Best neighbour: <9.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.00265549446276302
+Best neighbour: <22.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Starting local search on configuration: <26.0> with acq. val. 0.00265549446276302
+Best neighbour: <26.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.329219464665602e-06
+Best neighbour: <3.0> with acq. val. 0.0026554944627632665
+Best neighbour: <3.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.0026554944627632665
+Best neighbour: <3.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <3.0> with acq. val. 0.0026554944627632665
+Best neighbour: <3.0> with acq. val. 0.0026554944627632665
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local minimum found!
+Multi-start LS time     0.1659 sec
+Best found configuration: <3.0>
+obj mean:1.8104608058929443  obj std:1.459509253501892 
+f*:-1.1778239011764526  mu:0.5832990936039799  sigma:0.7604139054807832  feasibility:1.0  p1:-0.018097248194564798 p2:0.02075274265732782  alpha:0.00265549446276302  w:tensor(1., dtype=torch.float64)
+log EI value: -2.5758545998347415
+Local search time     0.1787 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(3),0.20371200144290924,True,8767
+
+Black box function time     0.0141 sec
+Total iteration time     0.5722 sec
+Starting optimization iteration: 14 sample no: 17
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      55.18106454  |      +ve      |        
+  [1m[2]  [0;0m  |                     148.62968118  |      +ve      |        
+  [1m[3]  [0;0m  |                      88.24777191  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                  249784.13938525  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                      25.88555138  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000001  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[17] [0;0m  |                     168.15102903  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00017189  |      +ve      |        
+  [1m[20] [0;0m  |                      18.79488368  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000002  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.84733801  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.84733801 0.         0.         0.         0.        ]
+ [0.         0.84733801 0.         0.         0.        ]
+ [0.         0.         0.84733801 0.84731304 0.        ]
+ [0.         0.         0.84731304 0.84733801 0.        ]
+ [0.         0.         0.         0.         0.84733801]]
+End of training - Time       3.99 sec
+Model fitting time     3.9854 sec
+Total RS time     0.0009 sec
+Optimization function time     0.0063 sec
+Starting local search on configuration: <23.0> with acq. val. 0.11171667421823547
+Best neighbour: <23.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Starting local search on configuration: <8.0> with acq. val. 0.11171667421823547
+Best neighbour: <8.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Starting local search on configuration: <9.0> with acq. val. 0.11171667421823547
+Best neighbour: <9.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.11171667421823547
+Best neighbour: <22.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Starting local search on configuration: <26.0> with acq. val. 0.11171667421823547
+Best neighbour: <26.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.305444075122834e-06
+Best neighbour: <4.0> with acq. val. 0.11171667421823547
+Best neighbour: <4.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.11171667421823547
+Best neighbour: <4.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.11171667421823547
+Best neighbour: <4.0> with acq. val. 0.11171667421823547
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local minimum found!
+Multi-start LS time     0.6449 sec
+Best found configuration: <23.0>
+obj mean:1.7159461975097656  obj std:1.4659103155136108 
+f*:-1.1082056760787964  mu:-0.5582822922289381  sigma:0.7839838392495673  feasibility:1.0  p1:-0.13281533157148087 p2:0.24453200578971634  alpha:0.11171667421823547  w:tensor(1., dtype=torch.float64)
+log EI value: -0.951882001633469
+Local search time     0.6925 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(23),2.013706922531128,True,13461
+
+Black box function time     0.1884 sec
+Total iteration time     4.8669 sec
+Starting optimization iteration: 15 sample no: 18
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                      55.87920723  |      +ve      |        
+  [1m[2]  [0;0m  |                     101.92000847  |      +ve      |        
+  [1m[3]  [0;0m  |                      65.31631807  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                     242.93828939  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[12] [0;0m  |                      23.01562381  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[17] [0;0m  |                     186.66209920  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[20] [0;0m  |                      15.99557795  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[25] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.77684054  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[0.77684054 0.         0.         0.         0.        ]
+ [0.         0.77684054 0.         0.         0.        ]
+ [0.         0.         0.77684054 0.776811   0.        ]
+ [0.         0.         0.776811   0.77684054 0.        ]
+ [0.         0.         0.         0.         0.77684054]]
+End of training - Time       1.02 sec
+Model fitting time     1.0191 sec
+Total RS time     0.0006 sec
+Optimization function time     0.0118 sec
+Starting local search on configuration: <25.0> with acq. val. 0.09646576327399489
+Best neighbour: <25.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Starting local search on configuration: <8.0> with acq. val. 0.09646576327399489
+Best neighbour: <8.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Starting local search on configuration: <9.0> with acq. val. 0.09646576327399489
+Best neighbour: <9.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Starting local search on configuration: <22.0> with acq. val. 0.09646576327399489
+Best neighbour: <22.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Starting local search on configuration: <14.0> with acq. val. 0.09646576327399489
+Best neighbour: <14.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 8.31059027869666e-06
+Best neighbour: <4.0> with acq. val. 0.09646576327399409
+Best neighbour: <4.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.09646576327399409
+Best neighbour: <4.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.09646576327399409
+Best neighbour: <4.0> with acq. val. 0.09646576327399409
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local minimum found!
+Multi-start LS time     0.2188 sec
+Best found configuration: <25.0>
+obj mean:1.7324883937835693  obj std:1.4238725900650024 
+f*:-1.1525416374206543  mu:-0.5807808848847209  sigma:0.7506516481832629  feasibility:1.0  p1:-0.1275729805539767 p2:0.2240387438279716  alpha:0.09646576327399489  w:tensor(1., dtype=torch.float64)
+log EI value: -1.015626795043998
+Local search time     0.2603 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(25),3.749321937561035,True,14929
+
+Black box function time     0.0311 sec
+Total iteration time     1.3108 sec
+Starting optimization iteration: 16 sample no: 19
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                     211.14802436  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                     209.53586598  |      +ve      |        
+  [1m[11] [0;0m  |                       1.03063351  |      +ve      |        
+  [1m[12] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                     220.97949166  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                     228.65699724  |      +ve      |        
+  [1m[16] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[19] [0;0m  |                       0.72693604  |      +ve      |        
+  [1m[20] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                     334.51532844  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[24] [0;0m  |                       0.82162057  |      +ve      |        
+  [1m[25] [0;0m  |                     508.03930728  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    0.77603013  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.01066069  |      +ve      |        
+[[0.77603013 0.42003143 0.         0.         0.        ]
+ [0.42003143 0.77603013 0.         0.         0.        ]
+ [0.         0.         0.77603013 0.         0.        ]
+ [0.         0.         0.         0.77603013 0.        ]
+ [0.         0.         0.         0.         0.77603013]]
+End of training - Time       0.63 sec
+Model fitting time     0.6321 sec
+Total RS time     0.0006 sec
+Optimization function time     0.0108 sec
+Starting local search on configuration: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.042860208348423426
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0337574453157764
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Starting local search on configuration: <17.0> with acq. val. 0.029050945856163628
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Starting local search on configuration: <6.0> with acq. val. 0.026933862388625586
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.042860208348423426
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Starting local search on configuration: <1.0> with acq. val. 0.0337574453157764
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+Best neighbour: <20.0> with acq. val. 0.05025646465182469
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local minimum found!
+Multi-start LS time     0.2098 sec
+Best found configuration: <20.0>
+obj mean:1.8386374711990356  obj std:1.4590628147125244 
+f*:-1.197495698928833  mu:-1.181268051189806  sigma:0.1455229270815879  feasibility:1.0  p1:-0.007434508367265077 p2:0.05769097301908977  alpha:0.05025646465182469  w:tensor(1., dtype=torch.float64)
+log EI value: -1.2988080656082852
+Local search time     0.2331 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(20),0.09141600131988525,True,15828
+
+Black box function time     0.0342 sec
+Total iteration time     0.9002 sec
+Starting optimization iteration: 17 sample no: 20
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       7.04068505  |      +ve      |        
+  [1m[12] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                     938.92228057  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                      11.62076069  |      +ve      |        
+  [1m[19] [0;0m  |                      43.79507390  |      +ve      |        
+  [1m[20] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[23] [0;0m  |                    1129.49516797  |      +ve      |        
+  [1m[24] [0;0m  |                      16.42866228  |      +ve      |        
+  [1m[25] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.24825060  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.2482506  0.         0.         0.         0.        ]
+ [0.         1.2482506  0.         0.         1.22037762]
+ [0.         0.         1.2482506  0.         0.        ]
+ [0.         0.         0.         1.2482506  0.        ]
+ [0.         1.22037762 0.         0.         1.2482506 ]]
+End of training - Time       0.76 sec
+Model fitting time     0.7647 sec
+Total RS time     0.0008 sec
+Optimization function time     0.0116 sec
+Starting local search on configuration: <22.0> with acq. val. 0.043135759997048315
+Best neighbour: <22.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Starting local search on configuration: <7.0> with acq. val. 0.043135759997048315
+Best neighbour: <7.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Starting local search on configuration: <8.0> with acq. val. 0.043135759997048315
+Best neighbour: <8.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Starting local search on configuration: <9.0> with acq. val. 0.043135759997048315
+Best neighbour: <9.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Starting local search on configuration: <14.0> with acq. val. 0.043135759997048315
+Best neighbour: <14.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512372046185459e-06
+Best neighbour: <4.0> with acq. val. 0.043135759997048315
+Best neighbour: <4.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512372046185459e-06
+Best neighbour: <4.0> with acq. val. 0.043135759997048315
+Best neighbour: <4.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.043135759997048315
+Best neighbour: <4.0> with acq. val. 0.043135759997048315
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local minimum found!
+Multi-start LS time     0.1810 sec
+Best found configuration: <22.0>
+obj mean:1.7512763738632202  obj std:1.4729080200195312 
+f*:-1.126927375793457  mu:0.11152284612524  sigma:0.9513278969221648  feasibility:1.0  p1:-0.11948582996624656 p2:0.16262158996329487  alpha:0.043135759997048315  w:tensor(1., dtype=torch.float64)
+log EI value: -1.365162545844098
+Local search time     0.2020 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(22),1.7325390577316284,True,16827
+
+Black box function time     0.0257 sec
+Total iteration time     0.9928 sec
+Starting optimization iteration: 18 sample no: 21
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       7.07315049  |      +ve      |        
+  [1m[12] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                  240866.44240765  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                      11.51382530  |      +ve      |        
+  [1m[19] [0;0m  |                      45.37367001  |      +ve      |        
+  [1m[20] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       7.36495217  |      +ve      |        
+  [1m[23] [0;0m  |                     722.63306742  |      +ve      |        
+  [1m[24] [0;0m  |                      16.63681862  |      +ve      |        
+  [1m[25] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.31311464  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.31311464 0.         0.         0.         0.        ]
+ [0.         1.31311464 0.         0.         1.28384148]
+ [0.         0.         1.31311464 0.         0.        ]
+ [0.         0.         0.         1.31311464 0.        ]
+ [0.         1.28384148 0.         0.         1.31311464]]
+End of training - Time       1.06 sec
+Model fitting time     1.0609 sec
+Total RS time     0.0006 sec
+Optimization function time     0.0071 sec
+Starting local search on configuration: <9.0> with acq. val. 0.04586665533825686
+Best neighbour: <9.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Starting local search on configuration: <7.0> with acq. val. 0.04586665533825686
+Best neighbour: <7.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Starting local search on configuration: <8.0> with acq. val. 0.04586665533825686
+Best neighbour: <8.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Starting local search on configuration: <14.0> with acq. val. 0.04586665533825686
+Best neighbour: <14.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Starting local search on configuration: <26.0> with acq. val. 0.04586665533825686
+Best neighbour: <26.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512381002518408e-06
+Best neighbour: <4.0> with acq. val. 0.04586665533825686
+Best neighbour: <4.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512381002518408e-06
+Best neighbour: <4.0> with acq. val. 0.04586665533825686
+Best neighbour: <4.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.04586665533825686
+Best neighbour: <4.0> with acq. val. 0.04586665533825686
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local minimum found!
+Multi-start LS time     0.1262 sec
+Best found configuration: <9.0>
+obj mean:1.7503842115402222  obj std:1.4356189966201782 
+f*:-1.1555769443511963  mu:0.09780106790132193  sigma:0.9755849297024088  feasibility:1.0  p1:-0.1246242464721896 p2:0.17049090181044646  alpha:0.04586665533825686  w:tensor(1., dtype=torch.float64)
+log EI value: -1.3385029280847007
+Local search time     0.1421 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(9),3.8341848850250244,True,18057
+
+Black box function time     0.0162 sec
+Total iteration time     1.2194 sec
+Starting optimization iteration: 19 sample no: 22
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[11] [0;0m  |                       8.22259639  |      +ve      |        
+  [1m[12] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                     133.51520648  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                      12.96483392  |      +ve      |        
+  [1m[19] [0;0m  |                      38.80190369  |      +ve      |        
+  [1m[20] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       6.53535697  |      +ve      |        
+  [1m[23] [0;0m  |                     122.59594037  |      +ve      |        
+  [1m[24] [0;0m  |                      13.15945125  |      +ve      |        
+  [1m[25] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.21832492  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.21832492 0.         0.         0.         0.        ]
+ [0.         1.21832492 0.         0.         1.19772934]
+ [0.         0.         1.21832492 0.         0.        ]
+ [0.         0.         0.         1.21832492 0.        ]
+ [0.         1.19772934 0.         0.         1.21832492]]
+End of training - Time       1.16 sec
+Model fitting time     1.1556 sec
+Total RS time     0.0007 sec
+Optimization function time     0.0034 sec
+Starting local search on configuration: <26.0> with acq. val. 0.03966931853180658
+Best neighbour: <26.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Starting local search on configuration: <7.0> with acq. val. 0.03966931853180658
+Best neighbour: <7.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Starting local search on configuration: <8.0> with acq. val. 0.03966931853180658
+Best neighbour: <8.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Starting local search on configuration: <14.0> with acq. val. 0.03966931853180658
+Best neighbour: <14.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Starting local search on configuration: <27.0> with acq. val. 0.03966931853180658
+Best neighbour: <27.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512341948372579e-06
+Best neighbour: <4.0> with acq. val. 0.03966931853180658
+Best neighbour: <4.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512341948372579e-06
+Best neighbour: <4.0> with acq. val. 0.03966931853180658
+Best neighbour: <4.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.03966931853180658
+Best neighbour: <4.0> with acq. val. 0.03966931853180658
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local minimum found!
+Multi-start LS time     0.1353 sec
+Best found configuration: <26.0>
+obj mean:1.8451024293899536  obj std:1.4697730541229248 
+f*:-1.1931681632995605  mu:0.06154090209434582  sigma:0.9397086197084479  feasibility:1.0  p1:-0.1140449265792636 p2:0.15371424511107018  alpha:0.03966931853180658  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4015452600859217
+Local search time     0.1528 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(26),1.806359052658081,True,19382
+
+Black box function time     0.0248 sec
+Total iteration time     1.3336 sec
+Starting optimization iteration: 20 sample no: 23
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       1.22226009  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[9]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.22660826  |      +ve      |        
+  [1m[11] [0;0m  |                       7.40117280  |      +ve      |        
+  [1m[12] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.19259030  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[16] [0;0m  |                  228039.58928565  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                      12.04098062  |      +ve      |        
+  [1m[19] [0;0m  |                      47.41580259  |      +ve      |        
+  [1m[20] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[22] [0;0m  |                       7.70931841  |      +ve      |        
+  [1m[23] [0;0m  |                     754.92765884  |      +ve      |        
+  [1m[24] [0;0m  |                      17.39355727  |      +ve      |        
+  [1m[25] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[26] [0;0m  |                      10.47891435  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.43309793  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.43309793 0.8976036  0.         0.         0.90369597]
+ [0.8976036  1.43309793 0.         0.         1.40384316]
+ [0.         0.         1.43309793 0.         0.        ]
+ [0.         0.         0.         1.43309793 0.        ]
+ [0.90369597 1.40384316 0.         0.         1.43309793]]
+End of training - Time       1.95 sec
+Model fitting time     1.9489 sec
+Total RS time     0.0007 sec
+Optimization function time     0.0060 sec
+Starting local search on configuration: <8.0> with acq. val. 0.034750846288073275
+Best neighbour: <8.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Starting local search on configuration: <5.0> with acq. val. 0.034750846288073275
+Best neighbour: <5.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Starting local search on configuration: <7.0> with acq. val. 0.034750846288073275
+Best neighbour: <7.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Starting local search on configuration: <14.0> with acq. val. 0.034750846288073275
+Best neighbour: <14.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Starting local search on configuration: <27.0> with acq. val. 0.034750846288073275
+Best neighbour: <27.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512392282321475e-06
+Best neighbour: <4.0> with acq. val. 0.03475084628806903
+Best neighbour: <4.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512392282321475e-06
+Best neighbour: <4.0> with acq. val. 0.03475084628806903
+Best neighbour: <4.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.03475084628806903
+Best neighbour: <4.0> with acq. val. 0.03475084628806903
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local minimum found!
+Multi-start LS time     0.2765 sec
+Best found configuration: <8.0>
+obj mean:1.843418002128601  obj std:1.43600332736969 
+f*:-1.220054268836975  mu:0.23121235050004696  sigma:1.0144277613116575  feasibility:1.0  p1:-0.11067337940839857 p2:0.14542422569647184  alpha:0.034750846288073275  w:tensor(1., dtype=torch.float64)
+log EI value: -1.4590346145626456
+Local search time     0.2961 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(8),3.467207908630371,True,21652
+
+Black box function time     0.0204 sec
+Total iteration time     2.2657 sec
+Starting optimization iteration: 21 sample no: 24
+lengthscales:
+  [1mindex[0;0m  |  GP_regression.Mat52.lengthscale  |  constraints  |  priors
+  [1m[0]  [0;0m  |                       1.35487371  |      +ve      |        
+  [1m[1]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[2]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[3]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[4]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[5]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[6]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[7]  [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[8]  [0;0m  |                       1.37783707  |      +ve      |        
+  [1m[9]  [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[10] [0;0m  |                       1.42358102  |      +ve      |        
+  [1m[11] [0;0m  |                       7.15898974  |      +ve      |        
+  [1m[12] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[13] [0;0m  |                       1.23713211  |      +ve      |        
+  [1m[14] [0;0m  |                       1.00000000  |      +ve      |        
+  [1m[15] [0;0m  |                       1.11099290  |      +ve      |        
+  [1m[16] [0;0m  |                     269.30389172  |      +ve      |        
+  [1m[17] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[18] [0;0m  |                      13.07093740  |      +ve      |        
+  [1m[19] [0;0m  |                      42.76459171  |      +ve      |        
+  [1m[20] [0;0m  |                       0.00000000  |      +ve      |        
+  [1m[21] [0;0m  |                       1.13572670  |      +ve      |        
+  [1m[22] [0;0m  |                       9.42933659  |      +ve      |        
+  [1m[23] [0;0m  |                     254.26168106  |      +ve      |        
+  [1m[24] [0;0m  |                      20.10770174  |      +ve      |        
+  [1m[25] [0;0m  |                       0.00000025  |      +ve      |        
+  [1m[26] [0;0m  |                      14.65013083  |      +ve      |        
+  [1m[27] [0;0m  |                       1.00000000  |      +ve      |        
+kernel variance:
+  [1mindex[0;0m  |  GP_regression.Mat52.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                    1.51855021  |      +ve      |        
+noise variance:
+  [1mindex[0;0m  |  GP_regression.Gaussian_noise.variance  |  constraints  |  priors
+  [1m[0]  [0;0m  |                             0.00000000  |      +ve      |        
+[[1.51855021 1.02488634 0.         0.         1.03357672]
+ [1.02488634 1.51855021 0.         0.         1.4872963 ]
+ [0.         0.         1.51855021 0.         0.        ]
+ [0.         0.         0.         1.51855021 0.        ]
+ [1.03357672 1.4872963  0.         0.         1.51855021]]
+End of training - Time       0.42 sec
+Model fitting time     0.4244 sec
+Total RS time     0.0007 sec
+Optimization function time     0.0046 sec
+Starting local search on configuration: <14.0> with acq. val. 0.027103532305600544
+Best neighbour: <14.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Starting local search on configuration: <27.0> with acq. val. 0.027103532305600544
+Best neighbour: <27.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Starting local search on configuration: <7.0> with acq. val. 0.027103532305600544
+Best neighbour: <7.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Starting local search on configuration: <5.0> with acq. val. 0.027103532305600544
+Best neighbour: <5.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Starting local search on configuration: <4.0> with acq. val. 0.027103532305600544
+Best neighbour: <4.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512400515569363e-06
+Best neighbour: <4.0> with acq. val. 0.027103532305601058
+Best neighbour: <4.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Starting local search on configuration: <20.0> with acq. val. 2.512400515569363e-06
+Best neighbour: <4.0> with acq. val. 0.027103532305601058
+Best neighbour: <4.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Starting local search on configuration: <12.0> with acq. val. 0.0
+Best neighbour: <4.0> with acq. val. 0.027103532305601058
+Best neighbour: <4.0> with acq. val. 0.027103532305601058
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local minimum found!
+Multi-start LS time     0.1515 sec
+Best found configuration: <4.0>
+obj mean:1.9110757112503052  obj std:1.443021535873413 
+f*:-1.2610065937042236  mu:0.3537692959817763  sigma:1.0409024541280605  feasibility:1.0  p1:-0.09753954892465044 p2:0.12464308123025099  alpha:0.027103532305600544  w:tensor(1., dtype=torch.float64)
+log EI value: -1.566974105403747
+Local search time     0.1769 sec
+schedule_index,runtime_ms,Valid,timestamp
+tensor(4),0.15543100237846375,True,22274
+
+Black box function time     0.0239 sec
+Total iteration time     0.6255 sec
+End of BO phase - Time    22.2874 sec
+End of Bayesian Optimization
+Total script time      22.30 sec
+Best point found: None
+End of HyperMapper

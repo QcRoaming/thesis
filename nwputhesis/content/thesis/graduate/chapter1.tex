@@ -1,0 +1,251 @@
+% !TeX root = ../../../graduate.tex
+%% 第一章
+
+\chapter{绪论}
+\chaptermark{绪论}
+\label{chap:introduction}
+
+近年的张量程序优化已经从单一循环调度扩展到跨层等价程序搜索、草稿验证式调优、显式变换 IR、跨后端程序翻译和概率化代码搜索\cite{Wu2025Mirage,Qiao2025Pruner,Luecke2025TransformDialect,Dong2025QiMengXpiler,Jeong2025BayesianCodeDiffusion}。这些研究拓宽了可自动探索的程序范围，也使候选结构、实现接口和运行时证据之间的关系更加重要。张量编译器可用参数化调度描述循环分块、数据打包和向量化，自动调优器则从给定参数域中选择配置。外部高性能微内核却不能被任意调度直接调用。它对数据类型、目标指令集、寄存器分块、数据布局、步长、边界处理和调用约定都有具体要求。若这些要求仍散落在算子库源码、编译选项和适配代码中，调度系统虽然知道如何变换程序，却无法在生成候选时说明某个候选能否接纳指定微内核。本文围绕这一接口缺口展开研究，重点讨论微内核调用前提的显式表示、调度空间的约束生成、真实执行路径的构造，以及搜索收益的适用边界。
+
+\section{课题研究背景及意义}
+
+\subsection{研究背景}
+
+通用矩阵乘法（General Matrix Multiplication，GEMM）是稠密线性代数和张量计算中的基本算子，其常用形式为
+
+\begin{equation}
+C = \alpha AB + \beta C,
+\label{eq:gemm-definition}
+\end{equation}
+
+其中，$A$、$B$ 和 $C$ 为矩阵，$\alpha$ 与 $\beta$ 为标量。GEMM 是 Level-3 BLAS 的代表性操作，具有较高的计算访存比\cite{Dongarra1990Level3}。深度学习中的线性层、注意力投影和多层感知机，以及科学计算中的稠密线性代数过程，都包含大量矩阵乘法。对这些工作负载而言，单次矩阵乘法的规模、形状和调用频率差异很大，算子实现既要利用目标处理器的计算资源，也要控制数据搬移和调度开销。
+
+朴素三重循环很难同时利用多级缓存、向量单元和寄存器复用。高性能 GEMM 实现通常将计算组织为多层分块，在外层控制缓存数据复用，在内层对矩阵面板进行打包，再由微内核完成固定尺寸的寄存器块更新\cite{Goto2008Anatomy}。BLIS 将这种结构明确分解为可配置的宏观循环、打包路径和架构相关微内核\cite{VanZee2015BLIS}；OpenBLAS 为多种处理器维护目标相关的内核和阻塞配置\cite{OpenMathLibOpenBLAS}；LIBXSMM 则通过运行时代码生成服务于小矩阵乘法等场景\cite{Heinecke2016LIBXSMM}。这些实现说明，微内核并非只由一个入口符号定义。能否正确调用它，还取决于元素类型、指令集、\texttt{MR}/\texttt{NR} 形状、$K$ 维步长、面板布局、stride、alignment、tail 语义、$\beta$ 处理和 ABI 等条件。
+
+另一条技术路线来自张量编译与自动调优。MLIR 以可扩展 Dialect 支持不同抽象层级的程序表示和渐进式 lowering\cite{Lattner2020MLIR}。Transform Dialect 把变换过程表示为独立 IR，使 tiling、packing、vectorization 等操作可以被组合、参数化并作用于 payload IR\cite{LLVMProjectTransformDialect,Luecke2025TransformDialect}。Ansor 和 MetaSchedule 等系统研究了张量程序搜索空间的自动生成与采样\cite{Zheng2020Ansor,Shao2022TensorProgram}，BaCO 则面向编译优化提供带约束参数空间的贝叶斯搜索能力\cite{Hellsten2023BaCO}。在这类流程中，Transform Dialect 负责表达和物化调度，调优器负责在给定候选中选择测量点，二者共同解决了“如何表示调度”和“如何搜索参数”。
+
+外部微内核接入暴露出这两条路线之间尚未闭合的接口。一个调度能够通过语法检查并保持 GEMM 语义，并不表示它已经满足特定微内核的实现前提。例如，内层 tile 与 \texttt{MR}/\texttt{NR} 对齐只能说明形状关系，不能替代对 packed panel、panel stride、尾部适配和调用 ABI 的检查。反过来，某组来自库配置的 \texttt{MC}/\texttt{KC}/\texttt{NC} 参数也不能因为来源于成熟实现就被视为当前主机上的固定最优选择。前一类条件决定调用是否成立，后一类信息主要影响候选的性能排序，两者具有不同的错误后果和迁移边界。
+
+据此，相关知识被区分为硬可接纳知识和软性能知识。硬可接纳知识描述调度调用指定外部微内核时不可缺少的实现条件，错误放宽可能造成无效调用或数值错误；软性能知识描述某些配置在特定来源环境中更可能较快，错误迁移通常表现为搜索顺序不佳。前者被组织为微内核可接纳性契约（Microkernel Admissibility Contract，后文简称 Contract），用于约束候选结构和执行路径；后者被保留为带来源、可撤销并需要目标测量校准的性能信息。这样可以在语义合法性与性能排序之间单独处理实现可接纳性，而不把库内所有参数都归入同一种“专家先验”。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.90\textwidth]{chapter1_microkernel_admissibility_problem.pdf}
+  \caption{张量自动调优中的外部微内核接纳问题}
+  \label{fig:chapter1-admissibility-problem}
+\end{figure}
+
+\subsection{研究意义}
+
+实现可接纳性为张量调度提供了一个独立于性能排序的判定层。传统编译检查主要关心变换是否保持程序语义，自动调优则根据目标函数比较合法候选。外部微内核接入还需要回答一个更具体的问题，即当前调度生成的数据布局和调用状态是否满足某个既有实现。把这一问题单独建模，有助于区分“程序结果是否正确”“指定实现能否被调用”和“候选在目标环境中是否更快”，也能使不同层次的失败得到不同处理。
+
+Contract 还为高性能库事实进入编译器提供了可审计的接口。库中的内核形状、packing 方式和 ABI 条件往往分布在配置文件、宏、打包例程与汇编入口中。若只把这些内容抄写为一组调优参数，来源版本、字段依赖和冲突信息会随转换过程丢失。本文保留源码位置、版本、证据等级、歧义和冲突记录，并把核验后的硬条件编译为候选约束。候选由此不仅包含 tile 数值，还能携带接纳依据、所需适配、预期路径和拒绝原因。
+
+在系统实现上，显式 Contract 可以连接调度表示与真实微内核执行。候选被调优器选中后，系统根据其路径生成 packing、动态边界适配、外部函数绑定或通用 fallback，并对 Transform IR、LLVM IR、链接符号、运行时路径和数值结果进行联合检查。这种组织方式使微内核接口条件不必重复隐藏在多个 pass 和手写模板中，也便于在增加数据类型、库或 ISA 时识别可以复用的部分和必须重新实现的部分。
+
+从部署角度看，本课题也限定了自动调优收益的评价方式。候选能够正确执行，不等于调优值得发生。目标校准、候选编译、实机测量和调优器运行都会产生一次性成本，生成候选还需要与完整 BLIS 或 OpenBLAS 路径比较，而不能只与标量 fallback 比较。将完整库基线、保守性能置信界和预期调用次数纳入分析，可以避免把池内搜索收敛误写为实际部署收益，并为直接使用完整库还是启动搜索提供可解释的依据。
+
+\section{国内外研究现状}
+
+与本文问题相邻的工作涉及调度语言、自动调优、结构化搜索空间、高性能微内核和动态代码生成。下面按它们处理的技术问题展开，而不是按软件系统逐项罗列。讨论重点是已有方法如何表达调度、如何约束候选、如何复用微内核，以及哪些接口条件仍由系统内部隐式维护。
+
+\subsection{张量程序调度表示与自动调优}
+
+调度语言把算子语义与执行策略分开，使开发者能够在不改写计算定义的情况下调整循环顺序、分块、并行和数据布局。Halide 较早系统化展示了 algorithm 与 schedule 分离对局部性和并行优化的作用\cite{RaganKelley2013Halide}，其后续自动调度器分别利用流水线结构分析、树搜索和随机程序训练减少手工调度成本\cite{Mullapudi2016HalideAutoscheduler,Adams2019HalideAutoscheduler}。
+
+面向张量计算的编译系统进一步扩展了调度表示。TVM 将高层张量表达、调度和多后端代码生成组织为端到端编译流程\cite{Chen2018TVM}；Tiramisu 以多面体表示支持可移植的循环与数据布局优化\cite{Baghdadi2019Tiramisu}；TACO 针对稀疏张量代数生成循环代码\cite{Kjolstad2017TACO}；Triton 则以块化程序抽象面向 GPU 张量内核\cite{Tillet2019Triton}。这些系统的表示层次和目标不同，但都说明了调度结构必须与数据布局、目标执行模型和代码生成路径共同设计。
+
+MLIR 将这类思想置于可扩展的多层 IR 基础设施中，不同 Dialect 可以分别承载结构化算子、循环、向量和目标相关操作\cite{Lattner2021MLIR,Lattner2020MLIR}。Polygeist 展示了从 C/C++ 提升到多面体 MLIR 的转换路径\cite{Moses2021Polygeist}，AKG 则把多面体变换用于面向神经处理器的自动内核生成\cite{Zhao2021AKG}。Transform Dialect 进一步以 transform IR 控制 payload IR，并提供句柄、参数和失败传播机制，使调度序列能够作为编译器中的显式对象保存和复用\cite{LLVMProjectTransformDialect,Luecke2025TransformDialect}。
+
+调度的可编程性还带来变换前置条件和正确性边界问题。Exo 允许用户通过调度过程逐步改写低层程序，并以受控的调度原语维持变换合法性\cite{Ikarashi2022Exocompilation}；高层调度重写的形式化研究则从语义保持角度验证张量程序优化\cite{Liu2022VerifiedScheduling}。TensorIR 把块、迭代域和张量化原语纳入统一表示，使调度与目标硬件内禀的匹配关系能够在程序表示中被操作\cite{Feng2023TensorIR}。上述机制加强了调度表达与语义检查，其主要判定对象仍是调度变换或硬件内禀匹配。对于库外部已经存在、且带有特定 packing 与 ABI 的微内核，完整调用前提仍需由接入系统补充。
+
+自动调优系统在调度表示之上选择配置。Ansor 通过分层表示自动生成较宽的张量程序搜索空间，并结合学习型代价模型与进化搜索选择候选\cite{Zheng2020Ansor}。MetaSchedule 将搜索空间写成可组合的概率程序，使调度规则、候选生成和学习搜索能够协同工作\cite{Shao2022TensorProgram}。FlexTensor 组合多种探索策略处理异构目标上的调度空间\cite{Zheng2020FlexTensor}，BaCO 则支持类别、整数、有序和排列等参数类型，并处理显式约束及编译过程中出现的隐藏约束\cite{Hellsten2023BaCO}。
+
+学习型搜索的效果还取决于训练数据、代价模型和候选验证。TenSet 提供跨六类硬件的大规模张量程序性能记录\cite{Zheng2021TenSet}，TLP 以深度模型预测候选性能\cite{Zhai2023TLP}。近期工作又分别采用草稿生成后验证、张量语言模型辅助生成和贝叶斯代码扩散提高探索效率\cite{Qiao2025Pruner,Zhai2024TLM,Jeong2025BayesianCodeDiffusion}。在更一般的编译优化层面，CompilerGym 提供可复现实验环境和统一交互接口\cite{Cummins2022CompilerGym}。这些方法减少了人工枚举和盲目测量，但搜索器只能消费调用方提供的参数语义与可行域。单凭一个微内核符号，搜索器无法恢复 packed layout、tail 和 ABI，也不能替代接纳边界的建模。
+
+\subsection{结构化搜索空间、约束与性能知识迁移}
+
+宽搜索空间提高了发现新调度的可能性，也增加了编译和测量负担。结构化空间研究通常利用硬件资源、整除关系或程序结构缩小候选集合。ROLLER 以与加速器特征对齐的 rTile 构造候选，并用构造式方法降低反复试测的成本\cite{Zhu2022ROLLER}。针对卷积的研究也表明，围绕算子结构设计紧凑空间，可以在较少候选中保留有竞争力的实现\cite{Tollenaere2023AutotuningConvolutions}。这些方法说明，搜索空间不是中性的参数容器，约束的选择会改变可行候选比例和有限预算下的搜索结果。
+
+结构化搜索也可以跨越单个循环调度。TASO 自动生成并验证计算图替换\cite{Jia2019TASO}，PET 在部分等价变换后加入自动校正\cite{Wang2021PET}，Mirage 则在内核、线程块和线程层级的统一表示上搜索代数与调度变换\cite{Wu2025Mirage}。这类工作扩大了等价程序的探索范围，同时提高了对候选正确性判定和分层表示的要求。
+
+另一些系统从跨算子或全图范围重构优化空间。Rammer 以 rTask 统一表达算子内和算子间并行\cite{Ma2020Rammer}，Welder 围绕 tile-graph 联合考虑数据复用和内存流量\cite{Shi2023Welder}，Ladder 将低精度数据类型和硬件感知张量变换纳入同一空间\cite{Wang2024Ladder}，MonoNN 则探索把静态推理任务组织为单体 GPU 内核的优化路径\cite{Zhuang2024MonoNN}。这些研究表明，空间边界由中间表示、执行资源和可验证变换共同决定，不能只用若干独立整数参数概括。
+
+动态形状和跨系统迁移进一步增加了空间构造难度。DietCode 为多种动态形状建立共享的搜索空间和代价模型\cite{Zheng2022DietCode}，Nimble 通过动态类型、编译优化和轻量运行时处理动态网络\cite{Shen2021Nimble}，PyTorch 2 结合 Python 字节码变换与图编译扩大可捕获程序范围\cite{Ansel2024PyTorch2}。QiMeng-Xpiler 使用神经符号方法在不同深度学习后端之间转换张量程序\cite{Dong2025QiMengXpiler}。与此同时，KPerfIR 把性能观测能力纳入多层编译流程\cite{Guan2025KPerfIR}，说明候选生成之外还需要可编程的测量与诊断证据。
+
+约束来源需要进一步区分。硬件资源上限、数据类型要求和布局前置条件决定候选是否能够执行；缓存块偏好、历史最佳参数和代价模型预测则用于判断候选是否可能更快。前者适合在测量前检查，后者存在目标依赖性。若把性能经验当作硬约束，空间可能过早排除在新设备上有效的配置；若把接口条件仅作为软排序，调优器仍会为不可调用候选支付编译或测量开销。
+
+性能知识迁移主要依靠历史调度或测量数据。Transfer-Tuning 按工作负载和目标之间的可复用关系迁移已有自动调度\cite{Gibson2022TransferTuning}，Performance Embeddings 则用性能相似性支持跨任务的调优信息复用\cite{Truemper2023PerformanceEmbeddings}。二者都试图减少新任务上的测量数量，迁移对象是调度选择、性能表征或候选排序。即使迁移得到有用的初始点，也不能据此认为外部微内核的 ABI 与 packing 条件随排序一起迁移。本文因此把接纳边界与性能排序分开评价：前者检查字段和执行路径，后者由目标环境的实测数据判断。
+
+\subsection{微内核、专家库与编译器协同}
+
+经验搜索与结构化实现长期共同推动高性能矩阵计算。ATLAS 通过实测选择实现参数\cite{Whaley2001ATLAS}，关于 BLAS 生成的后续研究则比较了经验搜索与模型驱动方法的必要性\cite{Yotov2005SearchBLAS}。高性能 GEMM 随后形成缓存分块、面板打包和寄存器微内核相结合的实现框架\cite{Goto2008Anatomy}，并被扩展到多线程矩阵乘法\cite{Smith2014ManyThreadedGEMM}。
+
+BLIS 通过对象化框架和架构配置分离通用循环与目标微内核\cite{VanZee2015BLIS,VanZee2016BLISFramework}，其分析模型可用于选择缓存分块参数\cite{Low2017AnalyticalBLIS}，较新的统一实现进一步讨论了不同 GEMM 变体之间的共享路径\cite{Xu2023UnifiedGEMM}。BLASFEO 面向嵌入式优化提供针对小型稠密线性代数的实现\cite{Frison2018BLASFEO}，OpenBLAS 以目标相关配置和内核覆盖多种 CPU 架构\cite{OpenMathLibOpenBLAS}，LIBXSMM 则针对给定形状和目标生成小矩阵乘法代码\cite{Heinecke2016LIBXSMM}。这些系统直接提供完整执行路径，其内部可以同时处理内核选择、packing、边界和线程划分，但接口知识通常服务于库自身的分派框架，并未作为独立的编译器对象公开。
+
+编译器与专家实现的协同大致有三种方式。其一是以平台无关原语连接平台特化实现，例如 Tensor Processing Primitives 将常用张量计算组织为可组合 primitive，并为不同平台提供高效实现\cite{Georganas2021TPP}。其二是在编译器生成的外层结构中嵌入专家内核，PolyDL 和 oneDNN Graph Compiler 分别展示了多面体优化或混合编译路径与高性能 primitive 的结合\cite{Tavarageri2021PolyDL,Li2024OneDNNGraphCompiler}。其三是把模板化硬件库纳入调优空间，Bolt 依托硬件原生模板缩小自动调优与专家实现之间的差距\cite{Xing2022Bolt}。这些路线都证明了复用成熟内核的价值。
+
+微内核也可以由调度系统生成或组合。autoGEMM 面向 Arm 上的不规则矩阵乘法构造和选择适合具体形状的微内核实现\cite{Wu2024AutoGEMM}。由于内核结构与调度由同一系统联合设计，二者的一致性可以在生成过程中维持。本文处理的是另一种情况：目标微内核已存在于外部库中，调度系统不能改写其内部实现，只能满足它的调用前提、生成必要适配，或者退回通用路径。内核生成流程中的内部一致性，在这里需要由外部实现的显式接纳检查替代。
+
+\subsection{动态适配与跨目标代码生成}
+
+动态 shape 使预先固定的 tile 和内核选择更难覆盖实际输入。On-the-Fly Micro-Kernel Polymerization 根据运行时形状组合微内核，以减少动态张量程序对静态特化的依赖\cite{Yu2024MicroKernelPolymerization}；autoGEMM 也把不规则形状与 Arm 微内核构造联系起来\cite{Wu2024AutoGEMM}。这两项工作把形状变化纳入内核生成或组合过程。对既有外部微内核而言，动态问题更多表现为主块与 fringe 的划分、补齐或临时缓冲，以及 direct 路径无法成立时的安全退化。
+
+Transform Dialect 的失败传播和 alternatives 机制为多路径调度提供了表达基础\cite{Luecke2025TransformDialect}，但 fallback 的存在本身并不能说明目标微内核已被正确接入。接入系统还要明确哪些条件可由 packing 或 padding 补偿，哪些条件属于不可改变的 ISA、dtype 或 ABI 要求。适配路径也必须接受数值结果、链接符号和运行时路径检查，否则静态上标记为微内核候选的配置仍可能在执行时落入通用实现。
+
+跨目标代码生成还需要区分多个复用层次。BLIS 和 OpenBLAS 可以在不同 ISA 上提供同类数学接口，但目标配置、微内核 ABI 和 packing 组织并不相同\cite{VanZee2015BLIS,OpenMathLibOpenBLAS}。调度表示或 Contract Schema 能够跨目标复用，不代表某个生成器和 adapter 可以零修改复用，更不代表候选性能排序保持不变。现有研究通常围绕自身的后端、模板或运行时完成这些连接。本文关心的是如何显式记录各层边界，并分别检验表示复用、代码复用、合法执行和性能排序。
+
+\subsection{与相邻软件机制的关系}
+
+本文借用“契约”一词，但不把 Contract 写成 Design by Contract 的替代。Design by Contract 以调用双方的前置条件、后置条件和不变式界定软件构件的行为责任\cite{Meyer1992DesignByContract}；本文的判定对象更窄，是调度候选在调用一个既有外部微内核前必须满足的实现条件，以及当前 adapter 能否承担剩余义务。它不证明被调函数的完整后置条件，也不覆盖 descriptor 之外的任意内存状态。
+
+Feature model 用特征及其约束描述一组可配置系统的共同点和变化点\cite{Kang1990FODA}，库内 capability dispatch 与 ABI 检查则依据目标特性、入口和调用约定选择可执行实现。它们可以表达“有哪些配置”或“目标能否装载某个实现”。本文在此基础上增加面向编译器候选生成的字段级来源、检查阶段、失败动作、适配义务和稳定 reason code，并让失败直接传播到 direct、adapt、fallback 或 reject。因而，Contract 不是把配置文件换名，而是把外部实现条件编译成可审计的候选空间和路径记录。
+
+TVM 的目标描述、TensorIR 的 tensorize 匹配和 MLIR Transform Dialect 的句柄、匹配及失败传播，分别提供目标能力、内禀替换和变换编排机制\cite{Chen2018TVM,Feng2023TensorIR,LLVMProjectTransformDialect,Luecke2025TransformDialect}。这些机制可以表达本文物化过程中的若干动作，却不会仅凭微内核符号自动恢复 panel order、stride、tail、$\alpha/\beta$、辅助结构和真实 callee ABI。本文的新颖性不在契约思想或失败传播机制本身，而在把来源证据管理、硬软知识分离、Contract 编译、四类路径、真实执行联合验证和搜索经济性决策连接为一条可复核链路。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{相关方向的问题侧重与本文证据覆盖}
+  \label{tab:chapter1-related-work-comparison}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.26\textwidth}
+    *{6}{>{\centering\arraybackslash}X}
+    @{}
+  }
+    \toprule
+    \textbf{工作方向} &
+    \makecell[c]{\textbf{外部}\\\textbf{微内核}} &
+    \makecell[c]{\textbf{独立接纳}\\\textbf{表示}} &
+    \makecell[c]{\textbf{来源}\\\textbf{追溯}} &
+    \makecell[c]{\textbf{硬软}\\\textbf{区分}} &
+    \makecell[c]{\textbf{多路径}\\\textbf{生成}} &
+    \makecell[c]{\textbf{成本}\\\textbf{决策}} \\
+    \midrule
+    张量调度与自动调优\cite{Zheng2020Ansor,Shao2022TensorProgram,Hellsten2023BaCO}
+      & 非重点 & 非重点 & 非重点 & 部分 & 非重点 & 部分 \\
+    结构化空间与迁移\cite{Zhu2022ROLLER,Tollenaere2023AutotuningConvolutions,Gibson2022TransferTuning}
+      & 非重点 & 非重点 & 部分 & 部分 & 非重点 & 部分 \\
+    高性能库与运行时生成\cite{VanZee2015BLIS,OpenMathLibOpenBLAS,Heinecke2016LIBXSMM}
+      & 直接 & 库内隐含 & 源码记录 & 非重点 & 库内处理 & 部分 \\
+    编译器与专家实现协同\cite{Georganas2021TPP,Tavarageri2021PolyDL,Li2024OneDNNGraphCompiler,Xing2022Bolt}
+      & 直接 & 部分 & 部分 & 非重点 & 部分 & 部分 \\
+    本文受测实现
+      & 三包实测 & Schema 与实例 & 字段级 & 显式分层 & 四类路径 & 全成本判据 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+表~\ref{tab:chapter1-related-work-comparison} 按各类工作的主要研究对象归纳能力。“非重点”不表示相关系统无法扩展到该能力，而是表示该问题不是所引文献的直接建模对象；“部分”表示相关机制涉及该问题，但没有形成本文所需的完整接口。“本文受测实现”一行只对应三个微内核包、当前 Schema、四类路径及第五章的成本证据，不是对相关工作的总体优劣评分。该比较用于限定问题组合，不能替代对单个系统实现细节的逐项评价。
+
+\subsection{现有研究不足}
+
+现有工作已经提供了调度表示、搜索算法、结构约束、专家微内核和多路径执行所需的多项基础能力。在本文关注的外部微内核接入场景中，这些能力之间仍有四处需要补足的连接。
+
+第一，微内核调用前提缺少独立、带来源并可直接供 Transform 和调优器消费的表示。库源码能够给出内核符号与配置，编译器模板也可以写入若干前置条件，但如果版本、源码位置、证据等级、歧义和冲突没有随字段保存，候选判定就难以审计，库版本变化后也难以定位失效条件。
+
+第二，硬接纳条件与软性能偏好容易在“专家知识”名义下混合。dtype、ISA、packing、tail 和 ABI 决定调用能否成立，缓存块和候选优先级通常只描述来源环境中的性能经验。两类信息需要不同的验证方法，前者依靠 checker、变异测试和真实路径，后者依靠目标测量与统计比较。
+
+第三，跨目标复用常被压缩为单一的可移植性结论。事实上，Schema 可以复用、核心生成逻辑可以部分复用、候选可以正确执行、性能排序可以迁移，是四个不同命题。只有分层记录所需修改并在物理目标上验证路径，才能避免把第二数据类型或第二库的接入写成整个后端的零修改迁移。
+
+第四，搜索空间评价往往集中于池内最优或有限预算下的收敛，而部署决策还取决于完整库基线与一次性成本。若生成候选不及完整库，或者校准、编译和测量成本无法在预期调用次数内摊销，搜索即使在自身候选池内有效，也不构成正向部署收益。搜索价值需要在性能、成本和预期调用次数的共同约束下讨论。
+
+\section{研究内容}
+
+本文的研究目标是建立一条从外部高性能库事实到 MLIR 调度候选和真实微内核执行的可验证链路。该链路以 Contract 明确实现接纳边界，以条件化空间生成器构造具有不同执行意义的候选，以目标测量决定性能排序，并以完整成本判断是否值得搜索。研究对象限定为行主序、单线程 GEMM 及本文实现的 BLIS 和 OpenBLAS 微内核路径，不据此推导所有算子、线程模式或体系结构上的普遍结论。
+
+\subsection{研究目标与研究问题}
+
+围绕上述目标，本文设置四个研究问题。RQ1 检验 Contract 是否准确描述并诊断外部微内核的接纳边界；RQ2 检验 Contract 编译后得到的空间是否可执行、是否消除了路径内不活跃参数造成的语义重复，以及有限测量预算下是否保留搜索价值；RQ3 区分 Contract 表示、生成器实现、合法执行和性能排序在跨 dtype、库、ISA 与主机时的迁移程度；RQ4 在完整库基线和完整调优成本下判断哪些部署场景具有搜索价值。研究问题、对应工作与评价指标见表~\ref{tab:chapter1-rq-map}。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{研究问题、研究内容与评价指标}
+  \label{tab:chapter1-rq-map}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.08\textwidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    >{\raggedright\arraybackslash}p{0.32\textwidth}
+    @{}
+  }
+    \toprule
+    \textbf{编号} & \textbf{研究问题} & \textbf{对应内容} & \textbf{主要评价指标} \\
+    \midrule
+    RQ1 & Contract 能否准确界定并诊断外部微内核的实现接纳边界？
+      & 事实提取、Contract 建模、兼容性检查
+      & 路径一致率、误接纳率、误拒绝率、变异检出率、诊断准确率 \\
+    RQ2 & Contract 编译能否生成可执行、语义唯一且具有搜索价值的候选空间？
+      & 条件化枚举、路径分类、参数活性分析、候选规范化
+      & 候选缩减率、可调用候选密度、IR 重复率、达到 90\% 池内最优所需测量数、真实执行路径 \\
+    RQ3 & Contract 的哪些层次能够跨 dtype、库、ISA 和主机迁移？
+      & Schema 复用、生成器与 adapter、跨目标实验
+      & Schema 重合度、核心生成器复用、合法执行、排序迁移 \\
+    RQ4 & 在完整库基线和完整成本下，何种部署场景值得搜索？
+      & 目标校准、库基线比较、成本与调用次数分析
+      & 完整库性能比、调优总成本、预期调用次数、95\% 单侧置信下界盈亏平衡点 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+\subsection{主要研究内容}
+
+为回答四个研究问题，本文开展以下工作。
+
+\begin{enumerate}[label={（\arabic*）}]
+  \item \textbf{微内核知识提取与可接纳性契约建模。}
+  从固定版本的 BLIS 和 OpenBLAS 源码、架构配置、packing 例程、微内核入口与调用适配代码中提取字段级事实。每条事实记录库版本、源码位置、适用范围、证据等级和核验状态；对跨来源不一致的字段保留歧义与冲突。经核验的 dtype、ISA、\texttt{MR}/\texttt{NR}、$K$ 维条件、布局、stride、tail 和 ABI 被组织为 Contract，缓存分块与候选偏好则保留为 Performance Profile。
+
+  \item \textbf{契约驱动的分层调度空间生成。}
+  以任务上下文和目标 Contract 为输入，对通用参数域执行条件化枚举与约束传播，并将候选分为 direct、adapt、fallback 和 reject。direct 候选可以直接进入目标微内核；adapt 候选需要 packing、补齐、临时缓冲或 fringe 处理；fallback 候选保留正确的通用 MLIR 路径；reject 候选在编译或执行前终止。系统进一步分析各路径中的参数活性，对不会改变生成结果的参数进行规范化和去重。
+
+  \item \textbf{Transform 与外部微内核的真实执行闭环。}
+  将候选物化为 MLIR Transform 调度，并根据路径生成数据打包、动态边界适配、外部函数绑定和通用 fallback。程序继续下降至 LLVM IR 和目标二进制。验证同时覆盖数值 reference、Transform 与 LLVM IR、链接符号、运行时路径及 fringe 计数，使静态接纳结论能够与真实执行对应。
+
+  \item \textbf{迁移边界与搜索价值评价。}
+  在 BLIS Haswell \texttt{f32} $6\times16$、BLIS Haswell \texttt{f64} $6\times8$ 和 OpenBLAS RV64GCV $8\times8$ 微内核包上检验 Contract Schema、生成器、adapter 与执行路径的复用情况；在 i7、i9 和 K230 物理环境上比较静态性能知识与目标数据校准；最后以完整 BLIS 或 OpenBLAS 路径为基线，把校准、编译、测量和搜索成本纳入盈亏平衡分析。
+\end{enumerate}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{chapter1_research_route.pdf}
+  \caption{本文研究内容与技术路线}
+  \label{fig:chapter1-research-route}
+\end{figure}
+
+\subsection{主要贡献}
+
+本文的贡献不在提出契约思想或新的贝叶斯搜索算法，而在围绕外部微内核接纳问题完成以下四项组合性工作。
+
+\begin{enumerate}[label={（\arabic*）}]
+  \item 提出微内核可接纳性契约，将外部微内核的调用前提表示为带源码位置、版本、证据等级、适用范围、歧义和冲突记录的知识对象。Contract 不描述内核内部实现，而是描述张量调度接入该实现时必须满足的条件。
+
+  \item 提出 Contract 编译驱动的分层调度空间生成方法。该方法联合执行约束传播、direct/adapt/fallback/reject 路径分类、参数活性分析和候选规范化，使调优器面对的是执行意义不同的唯一候选，而不是形式不同但生成相同 IR 的参数组合。
+
+  \item 构建从 Contract、Transform 调度、packing 与边界适配到外部微内核调用的真实执行闭环。系统覆盖 BLIS 的 \texttt{f32} 与 \texttt{f64} 微内核以及 OpenBLAS RVV 微内核，并用数值、IR、链接与运行时证据联合验证 direct、adapt 和 fallback 路径。
+
+  \item 通过跨 dtype、库、ISA 和主机实验，给出硬接纳边界、生成器实现、性能排序和搜索经济性的分层结论。实验表明，接纳表示和硬条件比固定性能偏好更容易复用；软排序仍受目标环境影响，搜索是否发生还要由完整库性能和成本摊销共同决定。
+\end{enumerate}
+
+四个研究问题均有对应证据。独立构造的 24 个危险单字段变异均在微内核调用前被拒绝或安全降级；36 个工作负载的 93,600 次静态分类将每个工作负载的 2,600 个原始配置压缩为平均 104.4 个规范化可调用候选。8 个工作负载各 28 点的冻结实测子池只查询既有目标值；同一 25 唯一查询预算下，BaCO 与均匀随机的中位 $T_{90}$ 为 7.5/7.0，低预算配对区间跨 0，未观察到 BaCO 的稳定增量。BLIS \texttt{f32}/\texttt{f64} 复用了核心空间生成逻辑，OpenBLAS RVV 则只复用 Contract 字段模式与路径语义，仍保留包内生成器和适配器。在预声明的 i9 与 K230 精确形状场景中，完整库更快，因而不存在有限的正向盈亏平衡点。这些结果支持本文对接纳边界、空间结构和搜索决策的主张，不支持固定性能排序可跨平台复用，也不支持生成代码普遍优于完整库。
+
+\section{论文组织结构}
+
+全文共六章，各章围绕 Contract 建模、候选生成、真实执行和评价问题展开。
+
+第一章介绍研究背景与意义，梳理张量调度、自动调优、结构化空间、高性能微内核及动态适配的研究进展，给出研究问题、主要内容和贡献。
+
+第二章说明 GEMM 分层实现与微内核接口、MLIR Transform Dialect、有限候选空间和搜索成本等基础概念，并区分语义合法性、实现可接纳性与性能经济性三个评价层次。
+
+第三章研究高性能库事实的提取与证据管理，定义 Expert Fact、Microkernel Admissibility Contract 和 Performance Profile，说明硬接纳知识与软性能知识的建模边界。
+
+第四章给出 Contract 编译、路径分类、参数活性分析和候选规范化方法，介绍调优器接口、Transform 物化、packing、动态边界适配与外部微内核调用的系统实现。
+
+第五章围绕 RQ1 至 RQ4 评价 Contract 的接纳与诊断能力、生成空间的质量、跨目标迁移边界，以及完整成本下的搜索价值，并报告相应的消融与内部有效性检查。
+
+第六章总结全文结论与适用范围，讨论 Contract 自动抽取、多线程执行、更多算子和后端接入等后续工作。

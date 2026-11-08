@@ -1,0 +1,183 @@
+
+/buddy-mlir/jlq/thesis/experiments/outputs/rvv/rv64gcv_correctness.elf:	file format elf64-littleriscv
+
+Disassembly of section .text:
+
+0000000000011158 <saxpy_check_kernel>:
+   11158: 04a05363     	blez	a0, 0x1119e <saxpy_check_kernel+0x46>
+   1115c: c22028f3     	csrr	a7, vlenb
+   11160: 0018d793     	srli	a5, a7, 0x1
+   11164: 4841         	li	a6, 0x10
+   11166: 873e         	mv	a4, a5
+   11168: 00f86363     	bltu	a6, a5, 0x1116e <saxpy_check_kernel+0x16>
+   1116c: 4741         	li	a4, 0x10
+   1116e: 02e57963     	bgeu	a0, a4, 0x111a0 <saxpy_check_kernel+0x48>
+   11172: 4801         	li	a6, 0x0
+   11174: 080a         	slli	a6, a6, 0x2
+   11176: 00251713     	slli	a4, a0, 0x2
+   1117a: 01068533     	add	a0, a3, a6
+   1117e: 9642         	add	a2, a2, a6
+   11180: 95c2         	add	a1, a1, a6
+   11182: 96ba         	add	a3, a3, a4
+   11184: 0005a787     	flw	fa5, 0x0(a1)
+   11188: 00062707     	flw	fa4, 0x0(a2)
+   1118c: 00e7f7d3     	fadd.s	fa5, fa5, fa4
+   11190: 00f52027     	fsw	fa5, 0x0(a0)
+   11194: 0511         	addi	a0, a0, 0x4
+   11196: 0611         	addi	a2, a2, 0x4
+   11198: 0591         	addi	a1, a1, 0x4
+   1119a: fed515e3     	bne	a0, a3, 0x11184 <saxpy_check_kernel+0x2c>
+   1119e: 8082         	ret
+   111a0: 00189293     	slli	t0, a7, 0x1
+   111a4: 40b68733     	sub	a4, a3, a1
+   111a8: 4801         	li	a6, 0x0
+   111aa: fc5765e3     	bltu	a4, t0, 0x11174 <saxpy_check_kernel+0x1c>
+   111ae: 40c68733     	sub	a4, a3, a2
+   111b2: fc5761e3     	bltu	a4, t0, 0x11174 <saxpy_check_kernel+0x1c>
+   111b6: 0038d893     	srli	a7, a7, 0x3
+   111ba: 00289813     	slli	a6, a7, 0x2
+   111be: 01f89713     	slli	a4, a7, 0x1f
+   111c2: 41070733     	sub	a4, a4, a6
+   111c6: 00a77833     	and	a6, a4, a0
+   111ca: 40f80733     	sub	a4, a6, a5
+   111ce: 02f75733     	divu	a4, a4, a5
+   111d2: 0712         	slli	a4, a4, 0x4
+   111d4: 0741         	addi	a4, a4, 0x10
+   111d6: 031708b3     	mul	a7, a4, a7
+   111da: 98ae         	add	a7, a7, a1
+   111dc: 8336         	mv	t1, a3
+   111de: 83b2         	mv	t2, a2
+   111e0: 87ae         	mv	a5, a1
+   111e2: 0d107757     	vsetvli	a4, zero, e32, m2, ta, ma
+   111e6: 2287e407     	vl2re32.v	v8, (a5)
+   111ea: 2283e507     	vl2re32.v	v10, (t2)
+   111ee: 9796         	add	a5, a5, t0
+   111f0: 9396         	add	t2, t2, t0
+   111f2: 02851457     	vfadd.vv	v8, v8, v10
+   111f6: 22830427     	vs2r.v	v8, (t1)
+   111fa: 9316         	add	t1, t1, t0
+   111fc: ff1795e3     	bne	a5, a7, 0x111e6 <saxpy_check_kernel+0x8e>
+   11200: f6a81ae3     	bne	a6, a0, 0x11174 <saxpy_check_kernel+0x1c>
+   11204: bf69         	j	0x1119e <saxpy_check_kernel+0x46>
+
+0000000000011206 <_start>:
+   11206: 7179         	addi	sp, sp, -0x30
+   11208: f406         	sd	ra, 0x28(sp)
+   1120a: f022         	sd	s0, 0x20(sp)
+   1120c: ec26         	sd	s1, 0x18(sp)
+   1120e: e84a         	sd	s2, 0x10(sp)
+   11210: e44e         	sd	s3, 0x8(sp)
+   11212: c22029f3     	csrr	s3, vlenb
+   11216: 0039d913     	srli	s2, s3, 0x3
+   1121a: 4541         	li	a0, 0x10
+   1121c: 01257463     	bgeu	a0, s2, 0x11224 <_start+0x1e>
+   11220: 4501         	li	a0, 0x0
+   11222: a895         	j	0x11296 <_start+0x90>
+   11224: 00001517     	auipc	a0, 0x1
+   11228: 00291713     	slli	a4, s2, 0x2
+   1122c: 0019d593     	srli	a1, s3, 0x1
+   11230: 0d107657     	vsetvli	a2, zero, e32, m2, ta, ma
+   11234: 5208a457     	vid.v	v8
+   11238: 00199613     	slli	a2, s3, 0x1
+   1123c: 17850693     	addi	a3, a0, 0x178
+   11240: 40e0053b     	negw	a0, a4
+   11244: 04057513     	andi	a0, a0, 0x40
+   11248: 40b50733     	sub	a4, a0, a1
+   1124c: 02b75733     	divu	a4, a4, a1
+   11250: 0712         	slli	a4, a4, 0x4
+   11252: 0741         	addi	a4, a4, 0x10
+   11254: 03270733     	mul	a4, a4, s2
+   11258: 9736         	add	a4, a4, a3
+   1125a: 5e003557     	vmv.v.i	v10, 0x0
+   1125e: 5e040657     	vmv.v.v	v12, v8
+   11262: 10068793     	addi	a5, a3, 0x100
+   11266: 4a811757     	vfcvt.f.xu.v	v14, v8
+   1126a: 22868727     	vs2r.v	v14, (a3)
+   1126e: 02c60757     	vadd.vv	v14, v12, v12
+   11272: 2ae0b757     	vor.vi	v14, v14, 0x1
+   11276: 4ae11757     	vfcvt.f.xu.v	v14, v14
+   1127a: 22878727     	vs2r.v	v14, (a5)
+   1127e: 20068793     	addi	a5, a3, 0x200
+   11282: 0285c457     	vadd.vx	v8, v8, a1
+   11286: 96b2         	add	a3, a3, a2
+   11288: 22878527     	vs2r.v	v10, (a5)
+   1128c: 02c5c657     	vadd.vx	v12, v12, a1
+   11290: fce699e3     	bne	a3, a4, 0x11262 <_start+0x5c>
+   11294: ed0d         	bnez	a0, 0x112ce <_start+0xc8>
+   11296: 4581         	li	a1, 0x0
+   11298: 00251613     	slli	a2, a0, 0x2
+   1129c: 00001697     	auipc	a3, 0x1
+   112a0: 4505         	li	a0, 0x1
+   112a2: 10068693     	addi	a3, a3, 0x100
+   112a6: 9636         	add	a2, a2, a3
+   112a8: 20060613     	addi	a2, a2, 0x200
+   112ac: 30068693     	addi	a3, a3, 0x300
+   112b0: d015f7d3     	fcvt.s.wu	fa5, a1
+   112b4: e0f62027     	fsw	fa5, -0x200(a2)
+   112b8: d01577d3     	fcvt.s.wu	fa5, a0
+   112bc: 00062023     	sw	zero, 0x0(a2)
+   112c0: 0509         	addi	a0, a0, 0x2
+   112c2: f0f62027     	fsw	fa5, -0x100(a2)
+   112c6: 0611         	addi	a2, a2, 0x4
+   112c8: 0585         	addi	a1, a1, 0x1
+   112ca: fed613e3     	bne	a2, a3, 0x112b0 <_start+0xaa>
+   112ce: 00001517     	auipc	a0, 0x1
+   112d2: 0ce50413     	addi	s0, a0, 0xce
+   112d6: 10040613     	addi	a2, s0, 0x100
+   112da: 20040493     	addi	s1, s0, 0x200
+   112de: 04000513     	li	a0, 0x40
+   112e2: 85a2         	mv	a1, s0
+   112e4: 86a6         	mv	a3, s1
+   112e6: 00000097     	auipc	ra, 0x0
+   112ea: e72080e7     	jalr	-0x18e(ra) <saxpy_check_kernel>
+   112ee: 4541         	li	a0, 0x10
+   112f0: 01257563     	bgeu	a0, s2, 0x112fa <_start+0xf4>
+   112f4: 4501         	li	a0, 0x0
+   112f6: 4581         	li	a1, 0x0
+   112f8: a0b5         	j	0x11364 <_start+0x15e>
+   112fa: 00291513     	slli	a0, s2, 0x2
+   112fe: 0019d593     	srli	a1, s3, 0x1
+   11302: 0d107657     	vsetvli	a2, zero, e32, m2, ta, ma
+   11306: 5208a657     	vid.v	v12
+   1130a: 0986         	slli	s3, s3, 0x1
+   1130c: 5e003457     	vmv.v.i	v8, 0x0
+   11310: 5e00b557     	vmv.v.i	v10, 0x1
+   11314: 40a0053b     	negw	a0, a0
+   11318: 04057513     	andi	a0, a0, 0x40
+   1131c: 40b50633     	sub	a2, a0, a1
+   11320: 02b65633     	divu	a2, a2, a1
+   11324: 0612         	slli	a2, a2, 0x4
+   11326: 0641         	addi	a2, a2, 0x10
+   11328: 03260633     	mul	a2, a2, s2
+   1132c: 9626         	add	a2, a2, s1
+   1132e: 468d         	li	a3, 0x3
+   11330: 2284e707     	vl2re32.v	v14, (s1)
+   11334: 05107057     	vsetvli	zero, zero, e32, m2, ta, mu
+   11338: 02c5c857     	vadd.vx	v16, v12, a1
+   1133c: a6a6e657     	vmadd.vx	v12, a3, v10
+   11340: 4ac11657     	vfcvt.f.xu.v	v12, v12
+   11344: 72e61057     	vmfne.vv	v0, v14, v12
+   11348: 94ce         	add	s1, s1, s3
+   1134a: 0080b457     	vadd.vi	v8, v8, 0x1, v0.t
+   1134e: 5e080657     	vmv.v.v	v12, v16
+   11352: fcc49fe3     	bne	s1, a2, 0x11330 <_start+0x12a>
+   11356: 42006557     	vmv.s.x	v10, zero
+   1135a: 02852457     	vredsum.vs	v8, v8, v10
+   1135e: 428025d7     	vmv.x.s	a1, v8
+   11362: e515         	bnez	a0, 0x1138e <_start+0x188>
+   11364: 00251613     	slli	a2, a0, 0x2
+   11368: 4505         	li	a0, 0x1
+   1136a: 9622         	add	a2, a2, s0
+   1136c: 20060613     	addi	a2, a2, 0x200
+   11370: 30040693     	addi	a3, s0, 0x300
+   11374: 00062787     	flw	fa5, 0x0(a2)
+   11378: d0157753     	fcvt.s.wu	fa4, a0
+   1137c: 0611         	addi	a2, a2, 0x4
+   1137e: a0e7a753     	feq.s	a4, fa5, fa4
+   11382: 00174713     	xori	a4, a4, 0x1
+   11386: 9db9         	addw	a1, a1, a4
+   11388: 050d         	addi	a0, a0, 0x3
+   1138a: fed615e3     	bne	a2, a3, 0x11374 <_start+0x16e>
+   1138e: 00b03533     	snez	a0, a1
+   11392: 05d00893     	li	a7, 0x5d
+   11396: 00000073     	ecall

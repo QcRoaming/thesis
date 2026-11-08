@@ -1,0 +1,242 @@
+{
+  "experiment_id": "thesis.chapter4_5_integrated",
+  "source_artifacts": {
+    "chapter4_space_config": {
+      "path": "/buddy-mlir/jlq/thesis/experiments/chapter4_space/data/space_configs.json",
+      "sha256": "261184528a0229da50c94ba558733a191369bb64b8b0a9ddd017abf5530d7707"
+    },
+    "chapter4_contracts": {
+      "path": "/buddy-mlir/jlq/thesis/experiments/chapter3_rules/data/microkernel_contracts.yaml",
+      "sha256": "2faa5bf442f290aa8f7dc1355ea6b6901fe69bafb21ab31bf805c943e360db04"
+    },
+    "chapter4_rules": {
+      "path": "/buddy-mlir/jlq/thesis/experiments/chapter3_rules/data/expert_rules.yaml",
+      "sha256": "7077e3c6b58d77f0dee151197cc5cfc8219f8d6ed8e91f8161f5ef51f669890d"
+    },
+    "chapter5_packing_pass": {
+      "path": "/buddy-mlir/midend/lib/Conversion/MatMulOptimization/MatMulBlisMicrokernel.cpp",
+      "sha256": "a7e6f886b127f8a1b25719210ef02ddbbeb39add26cb5b8ac5ae817f3de288b2"
+    }
+  },
+  "path_matrix": {
+    "case_count": 3,
+    "predicted_path_counts": {
+      "direct": 1,
+      "adapt": 1,
+      "fallback": 1
+    },
+    "observed_path_counts": {
+      "direct": 1,
+      "adapt": 1,
+      "fallback": 1
+    },
+    "all_correct": true,
+    "all_predictions_match_observations": true,
+    "real_replacement_cases": 2,
+    "rows": [
+      {
+        "case_id": "direct_anchor",
+        "task_id": "anchor_192x256x256_f32",
+        "candidate_id": "m24_n32_k64_pab_v1",
+        "tile_m": 24,
+        "tile_n": 32,
+        "tile_k": 64,
+        "pack_mode": "ab",
+        "vectorize": true,
+        "contract_id": "haswell_f32_gemm_6x16",
+        "predicted_path": "direct",
+        "observed_path": "direct",
+        "prediction_matches_observation": true,
+        "reason_codes": [
+          "DIRECT_CONTRACT_MATCH"
+        ],
+        "actions": [
+          "insert_ab_panel_packing",
+          "invoke_contract_kernel"
+        ],
+        "score": 91.071429,
+        "is_core": true,
+        "is_shell": false,
+        "status": "PASS",
+        "compile_status": "pass",
+        "correctness_status": "pass",
+        "microkernel_replaced": true,
+        "has_direct_call": true,
+        "has_fringe_call": true,
+        "has_blis_kernel_symbol": true,
+        "has_dynamic_dims": true,
+        "fringe_calls": 0,
+        "expected_fringe_calls": 0,
+        "median_ms": 0.440963,
+        "gflops": 57.07,
+        "max_abs_diff": 1.37e-06,
+        "output_aliases_c": 1,
+        "llvm_ir_bytes": 18423,
+        "executable_bytes": 1412960,
+        "executable_sha256": "919eabbf3c4f97a1598da0858aefc6421afeea6af0b60ea965ec6d872450e8f7",
+        "measurement_protocol": {
+          "warmups": 1,
+          "repeats": 3,
+          "inner_iters": 1,
+          "cpu_affinity": 0
+        },
+        "transform_ms": 348.005132,
+        "lower_dialect_ms": 462.975193,
+        "translate_ms": 133.223272,
+        "native_compile_ms": 3423.995086,
+        "symbol_check_ms": 179.077606,
+        "benchmark_wall_ms": 23.150982
+      },
+      {
+        "case_id": "adapt_mnk_tail",
+        "task_id": "tail_190x250x250_f32",
+        "candidate_id": "m24_n32_k64_pab_v1",
+        "tile_m": 24,
+        "tile_n": 32,
+        "tile_k": 64,
+        "pack_mode": "ab",
+        "vectorize": true,
+        "contract_id": "haswell_f32_gemm_6x16",
+        "predicted_path": "adapt",
+        "observed_path": "adapt",
+        "prediction_matches_observation": true,
+        "reason_codes": [
+          "K_REMAINDER_ADAPTER",
+          "MN_TAIL_ADAPTER"
+        ],
+        "actions": [
+          "insert_ab_panel_packing",
+          "insert_k_remainder_cleanup",
+          "insert_finite_mn_fringe"
+        ],
+        "score": 71.107429,
+        "is_core": false,
+        "is_shell": false,
+        "status": "PASS",
+        "compile_status": "pass",
+        "correctness_status": "pass",
+        "microkernel_replaced": true,
+        "has_direct_call": true,
+        "has_fringe_call": true,
+        "has_blis_kernel_symbol": true,
+        "has_dynamic_dims": true,
+        "fringe_calls": 752,
+        "expected_fringe_calls": 752,
+        "median_ms": 0.409608,
+        "gflops": 57.982,
+        "max_abs_diff": 1.31e-06,
+        "output_aliases_c": 1,
+        "llvm_ir_bytes": 18417,
+        "executable_bytes": 1412960,
+        "executable_sha256": "0221b8bbf4eec17720b381de57bdd2ee6e015ed0bdd24ef4c9193049bcd179c1",
+        "measurement_protocol": {
+          "warmups": 1,
+          "repeats": 3,
+          "inner_iters": 1,
+          "cpu_affinity": 0
+        },
+        "transform_ms": 16.903674,
+        "lower_dialect_ms": 30.98874,
+        "translate_ms": 11.650505,
+        "native_compile_ms": 2650.604949,
+        "symbol_check_ms": 21.48376,
+        "benchmark_wall_ms": 20.414561
+      },
+      {
+        "case_id": "fallback_feature_miss",
+        "task_id": "feature_mismatch_192x256x256_f32",
+        "candidate_id": "m24_n32_k64_pnone_v0",
+        "tile_m": 24,
+        "tile_n": 32,
+        "tile_k": 64,
+        "pack_mode": "none",
+        "vectorize": false,
+        "contract_id": null,
+        "predicted_path": "fallback",
+        "observed_path": "fallback",
+        "prediction_matches_observation": true,
+        "reason_codes": [
+          "NO_MATCHING_CONTRACT"
+        ],
+        "actions": [
+          "generic_mlir_tiled_loop"
+        ],
+        "score": 10.0,
+        "is_core": false,
+        "is_shell": false,
+        "status": "PASS",
+        "compile_status": "pass",
+        "correctness_status": "pass",
+        "microkernel_replaced": false,
+        "has_direct_call": false,
+        "has_fringe_call": false,
+        "has_blis_kernel_symbol": false,
+        "has_dynamic_dims": true,
+        "fringe_calls": 0,
+        "expected_fringe_calls": 0,
+        "median_ms": 14.875397,
+        "gflops": 1.692,
+        "max_abs_diff": 8.3e-07,
+        "output_aliases_c": 1,
+        "llvm_ir_bytes": 12589,
+        "executable_bytes": 30552,
+        "executable_sha256": "54cf8e07e62e0a2b965f611270a03cf4944f43283588198a5c6ff07a2b151709",
+        "measurement_protocol": {
+          "warmups": 1,
+          "repeats": 3,
+          "inner_iters": 1,
+          "cpu_affinity": 0
+        },
+        "transform_ms": 95.029271,
+        "lower_dialect_ms": 38.280733,
+        "translate_ms": 14.223976,
+        "native_compile_ms": 1710.280793,
+        "symbol_check_ms": 18.403956,
+        "benchmark_wall_ms": 86.876445
+      }
+    ]
+  },
+  "baco": {
+    "baco_commit": "167b19699ead224b661da4abad560306f677e215",
+    "task_id": "anchor_192x256x256_f32",
+    "source_space": "expert_shell",
+    "full_space_size": 249,
+    "pool_size": 6,
+    "pool_role_counts": {
+      "core": 4,
+      "shell": 2
+    },
+    "budget": 6,
+    "evaluated": 6,
+    "unique_schedules": 5,
+    "valid_count": 6,
+    "observed_path_counts": {
+      "direct": 5,
+      "fallback": 1
+    },
+    "real_microkernel_evaluations": 5,
+    "all_predictions_match_observations": true,
+    "best": {
+      "iteration": 1,
+      "schedule_index": 0,
+      "candidate_id": "m24_n32_k64_pab_v1",
+      "tile_m": 24,
+      "tile_n": 32,
+      "tile_k": 64,
+      "pack_mode": "ab",
+      "vectorize": true,
+      "predicted_path": "direct",
+      "score": 91.071429,
+      "member_role": "core",
+      "runtime_ms": 0.4409630000591278,
+      "Valid": true,
+      "best_so_far_ms": 0.4409630000591278,
+      "observed_path": "direct",
+      "microkernel_replaced": true,
+      "correctness_status": "pass",
+      "callback_wall_ms": 0.12642
+    },
+    "seed": 41
+  },
+  "claim_boundary": "This is an integration smoke experiment on one x86-64 AVX2/FMA host. It proves that Chapter 4 candidates and BaCO callbacks can drive the Chapter 5 real BLIS direct/adapt/fallback evaluator. The six-point budget is not the formal B1-B4 multi-seed comparison, and its timings are not a general performance conclusion."
+}

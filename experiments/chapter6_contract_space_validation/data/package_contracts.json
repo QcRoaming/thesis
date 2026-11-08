@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "packages": [
+    {
+      "id": "blis_haswell_f32_6x16",
+      "library": "BLIS",
+      "operation": "linalg.matmul",
+      "dtype": "f32",
+      "target": {
+        "machine": "x86_64",
+        "architecture": "haswell",
+        "required_features": ["avx2", "fma"]
+      },
+      "kernel": {
+        "symbol": "bli_sgemm_haswell_asm_6x16",
+        "mr": 6,
+        "nr": 16,
+        "k_step": 4
+      },
+      "layout": {
+        "a": "row_major",
+        "b": "row_major",
+        "c": "row_major",
+        "inner_stride": 1
+      },
+      "packing": {
+        "required": true,
+        "schema_id": "blis_haswell_f32_ab_v1",
+        "panel_order": "a_mr_major_b_nr_major"
+      },
+      "capabilities": {
+        "mn_tail": true,
+        "k_tail": true,
+        "beta_modes": ["zero", "one"]
+      },
+      "abi": {
+        "schema_id": "blis_gemm_ukr_f32_v1",
+        "auxiliary_schema": "blis_auxinfo_v1"
+      },
+      "provenance": {
+        "source_revision": "36df51a81cc732eeadbf2e6732941dd5400db47d",
+        "source_file": "config/haswell/bli_cntx_init_haswell.c",
+        "source_sha256": "5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97"
+      },
+      "package_specific": {
+        "pack_kernel": "bli_spackm_haswell_asm_6x16",
+        "public_fallback": "bli_sgemm"
+      },
+      "fact_acquisition": {
+        "machine_parsed": 9,
+        "machine_derived": 2,
+        "manual_cross_check": 3,
+        "manual_only": 0
+      }
+    },
+    {
+      "id": "blis_haswell_f64_6x8",
+      "library": "BLIS",
+      "operation": "linalg.matmul",
+      "dtype": "f64",
+      "target": {
+        "machine": "x86_64",
+        "architecture": "haswell",
+        "required_features": ["avx2", "fma"]
+      },
+      "kernel": {
+        "symbol": "bli_dgemm_haswell_asm_6x8",
+        "mr": 6,
+        "nr": 8,
+        "k_step": 4
+      },
+      "layout": {
+        "a": "row_major",
+        "b": "row_major",
+        "c": "row_major",
+        "inner_stride": 1
+      },
+      "packing": {
+        "required": true,
+        "schema_id": "blis_haswell_f64_ab_v1",
+        "panel_order": "a_mr_major_b_nr_major"
+      },
+      "capabilities": {
+        "mn_tail": true,
+        "k_tail": true,
+        "beta_modes": ["zero", "one"]
+      },
+      "abi": {
+        "schema_id": "blis_gemm_ukr_f64_v1",
+        "auxiliary_schema": "blis_auxinfo_v1"
+      },
+      "provenance": {
+        "source_revision": "36df51a81cc732eeadbf2e6732941dd5400db47d",
+        "source_file": "config/haswell/bli_cntx_init_haswell.c",
+        "source_sha256": "5c8b99510cffe4ddd2006ee515f5adbfbff6b1008d3c9bb973b6059719fd5f97"
+      },
+      "package_specific": {
+        "pack_kernel": "bli_dpackm_haswell_asm_6x8",
+        "public_fallback": "bli_dgemm"
+      },
+      "fact_acquisition": {
+        "machine_parsed": 9,
+        "machine_derived": 2,
+        "manual_cross_check": 3,
+        "manual_only": 0
+      }
+    },
+    {
+      "id": "openblas_riscv64_zvl128b_f32_8x8",
+      "library": "OpenBLAS",
+      "operation": "linalg.matmul",
+      "dtype": "f32",
+      "target": {
+        "machine": "riscv64",
+        "architecture": "riscv64_zvl128b",
+        "required_features": ["rv64gc", "rvv", "zvl128b"]
+      },
+      "kernel": {
+        "symbol": "sgemm_kernel",
+        "mr": 8,
+        "nr": 8,
+        "k_step": 1
+      },
+      "layout": {
+        "a": "row_major",
+        "b": "row_major",
+        "c": "row_major",
+        "inner_stride": 1
+      },
+      "packing": {
+        "required": true,
+        "schema_id": "openblas_rvv_8x8_panel_v1",
+        "panel_order": "a_mr_major_b_nr_major"
+      },
+      "capabilities": {
+        "mn_tail": true,
+        "k_tail": true,
+        "beta_modes": ["zero", "one"]
+      },
+      "abi": {
+        "schema_id": "openblas_internal_sgemm_kernel_v1",
+        "auxiliary_schema": "openblas_dummy_offset_v1"
+      },
+      "provenance": {
+        "source_revision": "b338322e9afc063d95e2c117e85bedf28213295a",
+        "source_file": "kernel/riscv64/sgemm_kernel_8x8_zvl128b.c",
+        "source_sha256": "f31b364197861e3f039382ca3d54edbaf44ef12cb2dd563ff8263f3d567cf69c"
+      },
+      "package_specific": {
+        "pack_kernels": ["sgemm_oncopy", "sgemm_otcopy"],
+        "public_fallback": "cblas_sgemm",
+        "vector_bits": 128
+      },
+      "fact_acquisition": {
+        "machine_parsed": 7,
+        "machine_derived": 0,
+        "manual_cross_check": 0,
+        "manual_only": 0
+      }
+    }
+  ]
+}

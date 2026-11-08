@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_online_prior",
+  "source_experiment": "thesis.chapter6_evaluation",
+  "candidate_space": "contract_only",
+  "pool_size": 28,
+  "budget": 25,
+  "seeds": [11, 29, 41, 73, 101],
+  "calibration": {
+    "prior_precision_candidates": [0.01, 0.1, 1.0, 10.0],
+    "thompson_temperature_candidates": [0.0, 0.25, 0.5, 1.0],
+    "minimum_noise_variance": 0.0001,
+    "validation_objective": "mean_log_simple_regret_auc"
+  },
+  "measurement": {
+    "reuse_chapter6_protocol": true,
+    "measure_full_contract_pool_for_non_tuning_workloads": true,
+    "independent_trials": 3
+  },
+  "methods": {
+    "C0_random": "Contract-only pool with seeded random order",
+    "C1_static_blis": "Contract-only pool ranked by the frozen BLIS-derived score",
+    "C2_offline_calibrated": "Design-split calibrated model without target feedback",
+    "C3_online_calibrated": "Design-split posterior updated after every target observation",
+    "C4_misleading_online": "Reflected initial posterior updated after every target observation"
+  },
+  "claim_boundary": "Offline sequential replay over real x86 candidate measurements. Design workloads fit the model, validation workloads select hyperparameters, and holdout workloads are used once with fixed settings. Target-workload observations are revealed only after the policy selects that candidate. Cross-host results are not part of this package."
+}

@@ -1,0 +1,121 @@
+schema_version: 2
+rule_set: blis_haswell_gemm_chapter3
+scope:
+  operation: linalg.matmul
+  architecture: haswell
+  target_machine: x86_64
+  thread_mode: single_thread
+
+generic_baseline:
+  description: Bounded independent Cartesian tiling/vectorization space for the chapter 3 preliminary study
+  tile_m: [4, 6, 8, 12, 16, 24, 32]
+  tile_n: [4, 8, 12, 16, 24, 32]
+  tile_k: [8, 16, 32, 64]
+  vectorize: [false, true]
+  raw_space_size: 336
+
+rules:
+  - rule_id: register_blocking_matches_contract
+    category: register_blocking
+    condition: candidate dtype and ISA match the selected target Contract
+    action: constrain tile_m to multiples of MR and tile_n to multiples of NR
+    parameter_domain:
+      tile_m: multiples_of(contract.mr)
+      tile_n: multiples_of(contract.nr)
+    strength: hard_for_direct
+    priority: 100
+    source_fact_ids:
+      - blis.haswell.gemm.f32.mr
+      - blis.haswell.gemm.f32.nr
+      - blis.haswell.gemm.f64.mr
+      - blis.haswell.gemm.f64.nr
+    target_scope: {operations: [linalg.matmul], dtypes: [f32, f64], architectures: [haswell]}
+    evidence_level: E2
+    conflict_policy: target_contract_overrides_cross_dtype_or_cross_library_priors
+    provenance: BLIS context block sizes cross-checked against GEMM_UKR_SETUP_CT_ANY
+
+  - rule_id: cache_blocking_bounded_by_shape
+    category: cache_blocking
+    condition: a BLIS cache block is available for the selected dtype
+    action: prioritize min(shape_extent, MC/KC/NC) and nearby divisors
+    parameter_domain:
+      tile_m: [divisors_of(min(M, MC)), nearby_multiples_of(MR)]
+      tile_n: [divisors_of(min(N, NC)), nearby_multiples_of(NR)]
+      tile_k: [divisors_of(min(K, KC))]
+    strength: soft_prior
+    priority: 70
+    source_fact_ids:
+      - blis.haswell.gemm.f32.mc
+      - blis.haswell.gemm.f32.kc
+      - blis.haswell.gemm.f32.nc
+      - blis.haswell.gemm.f64.mc
+      - blis.haswell.gemm.f64.kc
+      - blis.haswell.gemm.f64.nc
+    target_scope: {operations: [linalg.matmul], dtypes: [f32, f64], architectures: [haswell]}
+    evidence_level: E1
+    conflict_policy: semantic_legality_and_shape_extent_override_cache_prior
+    provenance: Active bli_blksz_init_easy values in the Haswell context
+
+  - rule_id: packing_required_for_direct_kernel_path
+    category: packing
+    condition: execution path is direct or adapted microkernel invocation
+    action: insert A/B panel packing or downgrade to fallback
+    parameter_domain:
+      pack_a: [true]
+      pack_b: [true]
+      fallback_when_unavailable: [true]
+    strength: conditional_hard
+    priority: 95
+    source_fact_ids:
+      - blis.haswell.gemm.f32.pack_kernel
+      - blis.haswell.gemm.f64.pack_kernel
+    target_scope: {operations: [linalg.matmul], dtypes: [f32, f64], paths: [direct, adapt]}
+    evidence_level: E1
+    conflict_policy: missing_transform_packing_forces_fallback_not_silent_direct
+    provenance: Active BLIS_PACKM_KER registrations
+
+  - rule_id: vectorization_matches_target_isa
+    category: vectorization
+    condition: vectorization is enabled and the target exposes AVX2/FMA
+    action: prioritize N tiles compatible with the dtype-specific vector lane count
+    parameter_domain:
+      f32_vector_lanes: [8]
+      f64_vector_lanes: [4]
+      vectorize: [true, false]
+    strength: soft_prior
+    priority: 60
+    source_fact_ids:
+      - blis.haswell.gemm.f32.isa
+      - blis.haswell.gemm.f32.vector_lanes
+      - blis.haswell.gemm.f64.isa
+      - blis.haswell.gemm.f64.vector_lanes
+    target_scope: {operations: [linalg.matmul], dtypes: [f32, f64], required_features: [avx2, fma]}
+    evidence_level: E3
+    conflict_policy: transform_legality_overrides_lane_prior
+    provenance: Haswell compiler ISA flags plus dtype element width
+
+  - rule_id: explicit_tail_or_fallback
+    category: tail_and_fallback
+    condition: M or N is not divisible by MR/NR, packing is unavailable, or target features mismatch
+    action: select adapt when the adapter can compensate; otherwise select fallback or reject with a reason code
+    parameter_domain:
+      decisions: [adapt, fallback, reject]
+      reason_codes: [mn_tail, packing_unavailable, isa_mismatch, dtype_mismatch]
+    strength: hard
+    priority: 110
+    source_fact_ids:
+      - blis.haswell.gemm.f32.mr
+      - blis.haswell.gemm.f32.nr
+      - blis.haswell.gemm.f64.mr
+      - blis.haswell.gemm.f64.nr
+    target_scope: {operations: [linalg.matmul], dtypes: [f32, f64], architectures: [haswell]}
+    evidence_level: E2
+    conflict_policy: never_silently_treat_an_unadapted_candidate_as_direct
+    provenance: Fixed MR/NR kernel contract and explicit adapter capability boundary
+
+conflict_precedence:
+  - semantic_and_transform_legality
+  - current_target_contract
+  - same_backend_E1_E2_fact
+  - hardware_or_empirical_rule
+  - cross_source_soft_prior

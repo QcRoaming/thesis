@@ -1,0 +1,30 @@
+\begin{table}[htbp]
+  \centering
+  \caption{兼容性判定维度、原因码与动作}
+  \label{tab:chapter4-reasons}
+  \begin{tabular}{p{0.25\textwidth}p{0.14\textwidth}p{0.12\textwidth}p{0.39\textwidth}}
+    \toprule
+    原因码 & 维度 & 判定结果 & 含义 \\
+    \midrule
+    DIRECT\_CONTRACT\_MATCH & all & direct & The candidate satisfies every checked target-contract condition. \\
+    MN\_TAIL\_ADAPTER & tail & adapt & M/N tails require the declared finite tail adapter. \\
+    K\_REMAINDER\_ADAPTER & k\_constraint & adapt & The K remainder requires the declared remainder adapter. \\
+    NO\_MATCHING\_CONTRACT & contract\_selection & fallback & No target contract matches the task context; use generic lowering. \\
+    DTYPE\_MISMATCH & dtype & fallback & The task dtype differs from the selected contract dtype. \\
+    ISA\_FEATURE\_MISSING & isa & fallback & The target lacks one or more required ISA features. \\
+    MR\_NR\_MISMATCH & mr\_nr & fallback & The tile does not contain an integral MR by NR microtile. \\
+    VECTOR\_LANE\_MISMATCH & vectorization & fallback & The enabled vector tile is not a whole contract-lane multiple. \\
+    PACKING\_REQUIRED & packing & fallback & The target path requires packed A/B but the candidate does not request packing. \\
+    PACK\_LAYOUT\_MISMATCH & layout & fallback & The requested packed layout does not match the target panel semantics. \\
+    STRIDE\_MISMATCH & stride & fallback & The operand or output stride is incompatible with the target interface. \\
+    ALIGNMENT\_UNAVAILABLE & alignment & fallback & A required alignment is neither proven nor provided by an adapter. \\
+    CALL\_CONVENTION\_MISMATCH & call\_convention & fallback & The selected call interface differs from the contract ABI. \\
+    OUTPUT\_LAYOUT\_MISMATCH & layout & fallback & The output layout is incompatible with the contract and no conversion exists. \\
+    UNSUPPORTED\_OPERATION & payload & reject & The payload operation is not a supported GEMM form. \\
+    NON\_POSITIVE\_TILE & transform & reject & At least one tile size is non-positive. \\
+    TILE\_EXCEEDS\_EXTENT & transform & reject & A static tile exceeds the corresponding task extent under the frozen policy. \\
+    TRANSFORM\_PRECONDITION\_FAILED & transform & reject & The generated Transform sequence fails a structural precondition. \\
+    NO\_EXECUTABLE\_FALLBACK & fallback & reject & No direct, adapt, or generic fallback path is implemented. \\
+    \bottomrule
+  \end{tabular}
+\end{table}

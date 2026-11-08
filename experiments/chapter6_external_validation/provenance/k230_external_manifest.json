@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_external_validation.k230_openblas",
+  "status": "elf_ready_awaiting_board_measurement",
+  "target": "K230 C908 RT-Smart RV64GCV",
+  "generator_freeze": {
+    "schema_version": 1,
+    "status": "frozen_before_k230_backend_generation",
+    "path": "/buddy-mlir/jlq/thesis/experiments/chapter4_space/scripts/chapter4lib.py",
+    "sha256": "84c0e11ca6ebb731a9b6ecad0441b1a79d64ea4301ee89169887c761b618d4ee",
+    "prefreeze_generalization": "conditional_parameters now reads packing.layout and call_convention from the selected Contract; selection, compatibility, scoring, and space-membership algorithms are unchanged",
+    "postfreeze_allowed_additions": [
+      "Contract descriptor",
+      "package-local candidate data",
+      "packing/call adapter",
+      "deployment and result-import code"
+    ]
+  },
+  "contract": {
+    "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/data/k230_openblas_contract.json",
+    "sha256": "6d3316a32d308a85e98d6860ec33e95958b66504ad794b4461dbc68cd8807208"
+  },
+  "inputs": {
+    "workloads": "71130b1a574896914563df6f21f5c4225f844258e9869661a8ddcabc75640314",
+    "candidates": "1e220259ae145666fc0ff85d5a1d3acd89110a3e6479cdaea948f6b3f0ef5cea",
+    "runtime": "1c54892150857d5c5be04e726ba045e4f664f24ac5e9fd7736fda41a8a9a9558",
+    "openblas_library": "234e9bb378d62d19f60321fbea252e7106396746c96ef8d77f62cfa92574d508"
+  },
+  "matrix": {
+    "rows": 160,
+    "executable_rows": 133,
+    "direct_rows": 104,
+    "adapt_rows": 29,
+    "reject_rows": 27,
+    "json_sha256": "c6ffa1f39d91f711f9384417fc4c23200f6184ca4748de1174d4b43bb55c68d8",
+    "csv_sha256": "515f9516b048c9dacd44a485b286fff5696eb18a5922fdf984e4ba6d51751a3d",
+    "header_sha256": "656dcdc66e518aba6dac3bb32c42dc1bd8c5de56cc69f90d05b2bfbfc7ef0ee0"
+  },
+  "elf": {
+    "path": "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/build/k230_external/k230_openblas_contract_pool.elf",
+    "build_command": [
+      "/buddy-mlir/jlq/thesis/third_party/k230_sdk/toolchain/riscv64-linux-musleabi_for_x86_64-pc-linux-gnu/bin/riscv64-unknown-linux-musl-gcc",
+      "-std=c11",
+      "-O3",
+      "-march=rv64imafdcv",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-n",
+      "-static",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-fno-strict-aliasing",
+      "-Wl,--gc-sections",
+      "-Wl,--build-id=none",
+      "-T",
+      "/buddy-mlir/jlq/thesis/third_party/k230_sdk/src/big/rt-smart/userapps/linker_scripts/riscv64/link.lds",
+      "-I",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/build/generated",
+      "-I",
+      "/buddy-mlir/jlq/thesis/third_party/OpenBLAS-k230",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/runtime/k230_openblas_contract_bench.c",
+      "/buddy-mlir/jlq/thesis/third_party/OpenBLAS-k230/libopenblas.a",
+      "-lm",
+      "-o",
+      "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/build/k230_external/k230_openblas_contract_pool.elf"
+    ],
+    "sha256": "ac488c29e3913744f460bebf6c4a854c4e08fa4fcd26eb818431ee56a0626baa",
+    "size_bytes": 292432,
+    "riscv_attributes": "Attribute Section: riscv\nFile Attributes\n  Tag_RISCV_stack_align: 16-bytes\n  Tag_RISCV_arch: \"rv64i2p1_m2p0_a2p1_f2p2_d2p2_c2p0_v1p0_zicsr2p0_zve32f1p0_zve32x1p0_zve64d1p0_zve64f1p0_zve64x1p0_zvl128b1p0_zvl32b1p0_zvl64b1p0\"\n  Tag_RISCV_priv_spec: 1\n  Tag_RISCV_priv_spec_minor: 11",
+    "elf_header": "ELF Header:\n  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00 \n  Class:                             ELF64\n  Data:                              2's complement, little endian\n  Version:                           1 (current)\n  OS/ABI:                            UNIX - System V\n  ABI Version:                       0\n  Type:                              EXEC (Executable file)\n  Machine:                           RISC-V\n  Version:                           0x1\n  Entry point address:               0x200000000\n  Start of program headers:          64 (bytes into file)\n  Start of section headers:          289680 (bytes into file)\n  Flags:                             0x5, RVC, double-float ABI\n  Size of this header:               64 (bytes)\n  Size of program headers:           56 (bytes)\n  Number of program headers:         3\n  Size of section headers:           64 (bytes)\n  Number of section headers:         43\n  Section header string table index: 42",
+    "entry_point": "0x200000000",
+    "static": true,
+    "rvv_instruction_matches": 368,
+    "disassembly": "/buddy-mlir/jlq/thesis/experiments/chapter6_external_validation/build/k230_external/k230_openblas_contract_pool.disassembly.txt",
+    "disassembly_sha256": "cd84100296b0cdd668fc3c412cf0e62a1e5e6ef84c149d4c44e9361feb7ff379",
+    "required_symbols": [
+      "main",
+      "cblas_sgemm",
+      "sgemm_kernel"
+    ]
+  },
+  "claim_boundary": "This extension evaluates sparse target calibration, realistic Transformer GEMM shapes, and a second library/ISA microkernel package. It remains single-threaded, row-major, f32/f64 GEMM evidence rather than an end-to-end model or universal backend result."
+}

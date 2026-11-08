@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "oracle_policy": {
+    "positive_cases": "Expected paths are frozen independently of checker output.",
+    "dangerous_mutation": "Any single-field mutation whose direct execution would violate the selected package contract.",
+    "safe_downgrade": ["adapt", "fallback", "reject"],
+    "false_accept": "A dangerous mutation classified as direct.",
+    "false_reject": "A valid direct or adapt case classified as fallback or reject."
+  },
+  "templates": {
+    "direct": {
+      "shape": {"m": 96, "k": 128, "n": 128},
+      "beta_mode": "one",
+      "fallback_available": true
+    },
+    "adapt": {
+      "shape": {"m": 95, "k": 130, "n": 127},
+      "beta_mode": "one",
+      "fallback_available": true
+    }
+  },
+  "case_blueprint": [
+    {"suffix": "direct", "template": "direct", "mutation": null, "expected_path": "direct", "expected_phase": "dispatch", "expected_field": "none"},
+    {"suffix": "adapt", "template": "adapt", "mutation": null, "expected_path": "adapt", "expected_phase": "adaptation", "expected_field": "shape"},
+    {"suffix": "dtype", "template": "direct", "mutation": {"field": "dtype", "value": "mismatched"}, "expected_path": "fallback", "expected_phase": "compatibility", "expected_field": "dtype"},
+    {"suffix": "isa", "template": "direct", "mutation": {"field": "target.features", "value": []}, "expected_path": "reject", "expected_phase": "compatibility", "expected_field": "target.features"},
+    {"suffix": "kernel_shape", "template": "direct", "mutation": {"field": "kernel.rotating_dimension", "value": -1}, "expected_path": "reject", "expected_phase": "kernel", "expected_field": "kernel.rotating_dimension"},
+    {"suffix": "layout_stride", "template": "direct", "mutation": {"field": "layout.inner_stride", "value": 2}, "expected_path": "fallback", "expected_phase": "layout", "expected_field": "layout.inner_stride"},
+    {"suffix": "packing_schema", "template": "direct", "mutation": {"field": "packing.schema_id", "value": "foreign_packing_schema"}, "expected_path": "reject", "expected_phase": "packing", "expected_field": "packing.schema_id"},
+    {"suffix": "tail_beta", "template": "adapt", "mutation": {"field": "beta_mode", "value": "arbitrary"}, "expected_path": "fallback", "expected_phase": "capability", "expected_field": "beta_mode"},
+    {"suffix": "abi", "template": "direct", "mutation": {"field": "abi.schema_id", "value": "foreign_abi_schema"}, "expected_path": "reject", "expected_phase": "abi", "expected_field": "abi.schema_id"},
+    {"suffix": "source_revision", "template": "direct", "mutation": {"field": "provenance.source_revision", "value": "0000000000000000000000000000000000000000"}, "expected_path": "reject", "expected_phase": "provenance", "expected_field": "provenance.source_revision"}
+  ],
+  "rotating_kernel_dimension": {
+    "blis_haswell_f32_6x16": "kernel.mr",
+    "blis_haswell_f64_6x8": "kernel.nr",
+    "openblas_riscv64_zvl128b_f32_8x8": "kernel.k_step"
+  }
+}

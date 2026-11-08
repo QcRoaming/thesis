@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "seed": 20260723,
+  "random_order_trials": 1000,
+  "bootstrap_samples": 10000,
+  "representative_workloads": [
+    {"id": "sq_096", "role": "square"},
+    {"id": "ms_016x256x096", "role": "small-M"},
+    {"id": "ks_128x016x128", "role": "small-K"},
+    {"id": "ms_048x128x192", "role": "M-skinny"},
+    {"id": "ns_128x192x048", "role": "N-skinny"},
+    {"id": "sq_064", "role": "single-tail"},
+    {"id": "tail_095x127x130", "role": "triple-tail"},
+    {"id": "rect_064x256x192", "role": "Transformer projection"}
+  ],
+  "spaces": {
+    "G0": "raw Cartesian space",
+    "G1": "generic legality space (Chapter 6 B1)",
+    "C": "hard Contract callable space (Chapter 6 B2)"
+  },
+  "compile_replay_sample_per_workload_space": 32,
+  "normalized_baco_replay": {
+    "protocol_version": 1,
+    "method": "C_norm_baco",
+    "source_pool": "chapter6 base B2",
+    "measured_backfill_source": "union of base B1/B2/B3/B4 direct/adapt candidates",
+    "canonicalization": "remove vectorize from direct/adapt semantic key and prefer measured vectorize=false representative",
+    "backfill_order": "original B2 stable hash over canonical schedule ID",
+    "pool_size": 28,
+    "budget": 25,
+    "seeds": [11, 29, 41, 73, 101],
+    "workload_count": 8,
+    "report_regardless_of_outcome": true,
+    "allow_compilation": false,
+    "allow_hardware_measurement": false
+  },
+  "same_pool_random_baseline": {
+    "protocol_version": 1,
+    "methods": ["C_norm_baco", "uniform_random_without_replacement"],
+    "pool_source": "e2_normalized_pool.csv",
+    "pool_size": 28,
+    "unique_query_budget": 25,
+    "reported_budgets": [5, 10, 25],
+    "baco_callback_cap": 56,
+    "seeds": [11, 29, 41, 73, 101],
+    "workload_count": 8,
+    "bootstrap_samples": 10000,
+    "bootstrap_unit": "workload_cluster_with_five_paired_seeds",
+    "report_regardless_of_outcome": true,
+    "allow_compilation": false,
+    "allow_hardware_measurement": false
+  },
+  "economic_horizons": [1, 10, 100, 1000, 5000, 10000, 50000, 100000, 500000, 1000000]
+}

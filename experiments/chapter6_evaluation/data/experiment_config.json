@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_evaluation",
+  "methods": {
+    "B0": "default scalar dynamic MLIR lowering",
+    "B1": "Generic space plus unmodified BaCO",
+    "B2": "Contract-only space plus unmodified BaCO",
+    "B3": "Expert-core space plus unmodified BaCO",
+    "B4": "Expert-core plus exploration shell plus unmodified BaCO",
+    "B5": "complete BLIS bli_sgemm frontend"
+  },
+  "seeds": [11, 29, 41, 73, 101],
+  "budget": 25,
+  "pool_size": 28,
+  "compile_cost_guard": {
+    "max_vector_ir_work": 131072,
+    "minimum_vector_tile_area": 768,
+    "policy": "exclude only predicted-fallback vector schedules whose tile expansion estimate exceeds the bound"
+  },
+  "measurement": {
+    "cpu_affinity": 0,
+    "warmups": 2,
+    "repeats": 7,
+    "inner_iters": 1,
+    "independent_trials": 3
+  },
+  "bootstrap": {
+    "seed": 20260714,
+    "replicates": 10000,
+    "confidence": 0.95
+  },
+  "optimized_dynamic_baseline": {
+    "tile_m": 24,
+    "tile_n": 32,
+    "tile_k": 64,
+    "vectorize": true,
+    "vector_lanes": 8,
+    "implementation": "dynamic MLIR scf tiling with vector<8xf32> FMA and scalar N-tail cleanup"
+  },
+  "ablations": [
+    "no_mr_nr",
+    "no_cache_prior",
+    "no_packing_rule",
+    "no_checker",
+    "no_soft_prior",
+    "no_shell",
+    "misleading_prior"
+  ],
+  "shell_ratios": [0.0, 0.05, 0.10, 0.20, 0.30],
+  "claim_boundary": "Single-thread row-major f32 results on one x86-64 AVX2/FMA host. Tuning trajectories are offline BaCO replays over a frozen corpus of real compiled-and-executed candidates. Confidence intervals resample workloads or seeds, not machines. Cross-host and additional-dtype performance generalization are outside this package."
+}

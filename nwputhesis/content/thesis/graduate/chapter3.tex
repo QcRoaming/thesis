@@ -1,0 +1,440 @@
+% !TeX root = ../../../graduate.tex
+%% 第三章
+
+\chapter{微内核知识提取与可接纳性契约建模}
+\chaptermark{微内核知识提取与可接纳性契约建模}
+\label{chap:knowledge-contract}
+
+外部微内核的调用条件分散在配置、packing 例程、内核实现和调用方中。单独读取寄存器块尺寸，无法判断一段调度后的程序是否能够调用该内核。数据类型和指令集必须匹配，A、B 操作数要具有约定的 panel 布局，C 的 stride、边界处理和调用参数也要与 ABI 一致。另一方面，库中常见的 MC、KC、NC 等缓存块参数即使来自同一份源码，也不承担相同的正确性责任。违反它们通常使程序变慢，却不必然破坏计算结果。
+
+这一区别决定了库知识进入编译器的方式。来源常量先保存为带 provenance 的字段级事实，再按失败后果分为硬可接纳条件、软性能属性和未决信息。硬条件形成微内核可接纳性契约（Microkernel Admissibility Contract，以下简称 Contract），软属性进入 Performance Profile。Contract 规定调用边界；微内核内部的寄存器使用不在其描述范围内，第二章定义的 L1 语义与数值检查也仍然独立。
+
+本章给出上述知识对象的生成和检查接口。固定源码版本提供可复核的 Fact；多来源冲突在字段层显式保留；经核验的硬事实被编译为 Contract；性能信息和证据不足的字段分别进入 Performance Profile 与 Unresolved。最后以 BLIS Haswell \texttt{f32}/\texttt{f64} 和 OpenBLAS RV64GCV 三个微内核包说明共享 Schema 与包内特化的边界。候选空间规模、路径一致率和性能结果统一放在第五章。
+
+\section{设计目标与知识分层}
+
+知识对象需要定位到固定 revision、文件、行号或符号，脱离上下文的数值不足以构成 Fact。机器解析、确定性推导、人工核验和运行证据分别记账。硬条件与性能经验使用不同的消费接口，软属性没有改写安全退化路径的权限。源码或适配器版本变化后，依赖旧证据的对象进入失效检查。
+
+本文把固定库版本、目标架构、数据类型和构建模式下的知识来源称为\emph{来源 profile}。profile 是抽取边界，不等于可调用后端。每条来源信息先表示为 Fact，再由分类函数 $\Pi$ 处理：
+
+\begin{equation}
+\Pi(f)=
+\begin{cases}
+\mathrm{Contract}, &
+\text{违反该事实可能导致错误结果、ABI 失配或不可调用},\\
+\mathrm{Profile}, &
+\text{违反该事实仍可正确执行，但可能改变性能},\\
+\mathrm{Unresolved}, &
+\text{证据冲突、语义不明或适用范围尚未闭合}.
+\end{cases}
+\label{eq:chapter3-fact-classification}
+\end{equation}
+
+式~\eqref{eq:chapter3-fact-classification} 判断的是字段用途，而不是证据等级。一个由源码直接读取的缓存块常量可以具有较强的来源证据，同时仍然只是软性能属性。相反，packing 顺序即使没有给出推荐参数，也会影响微内核读取数据的含义，因此属于硬条件。
+
+Fact、Contract、Performance Profile 和 Unresolved 承担不同职责。
+
+\begin{itemize}
+  \item Fact 保存原始值、归一化字段、适用范围和 provenance，不对候选作接纳判断。
+  \item Contract 保存调用成立必须满足的谓词，以及当前实现允许的有限适配和安全退化路径。
+  \item Performance Profile 保存带来源、可校准、可撤销的排序特征。它只作用于已经通过硬检查的候选集合。
+  \item Unresolved 保存尚不能进入前两类对象的冲突和歧义，并明确阻止相关字段被自动消费。
+\end{itemize}
+
+这四类对象没有共同的“置信度阈值”。Contract 字段需要来源证据、实现支持和检查语义同时闭合；Performance Profile 可以带着较弱的迁移假设进入目标校准；Unresolved 则等待新的源码、运行探针或人工决议。机器检查和作者签核也保持为两个状态。前者可以验证路径、类型和 Schema，后者表示作者已经复核证据，但不能由程序自动补写。
+
+\section{固定源码、Fact 与 provenance}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{chapter3_source_fact_contract_pipeline.pdf}
+  \caption{从源码事实到 Contract 与 Performance Profile 的知识管线}
+  \label{fig:chapter3-knowledge-pipeline}
+\end{figure}
+
+图~\ref{fig:chapter3-knowledge-pipeline} 所示管线先冻结来源，再做归一化和分类。记录中分别保留源码事实、当前包的接纳条件和目标机器上的性能判断，三者不共用一个状态。
+
+\subsection{固定库版本与来源类型}
+
+BLIS 来源固定为 revision \texttt{36df51a81cc732eeadbf2e6732941dd5400db47d}，OpenBLAS 来源固定为 revision \texttt{b338322e9afc063d95e2c117e85bedf28213295a}。provenance 和版本失效检查使用完整 revision；分支名和本地工作区时间不作为版本证据。本文使用的三个微内核包见表~\ref{tab:chapter3-packages}。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{三个微内核包、固定 revision 与事实来源}
+  \label{tab:chapter3-packages}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.17\textwidth}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    >{\raggedright\arraybackslash}p{0.16\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{微内核包} & \textbf{目标与寄存器块} & \textbf{固定 revision} &
+    \textbf{事实来源与实现边界} \\
+    \midrule
+    BLIS Haswell \texttt{f32} &
+    x86-64，AVX2/FMA，$6\times16$ &
+    \texttt{36df51a8...} &
+    \textbf{来源：}context 初始化、SGEMM 内核、pack kernel、构建标志和 GEMM\_UKR 接口
+    \newline \textbf{边界：}共享 BLIS 生成器与 \texttt{f32} adapter \\
+    BLIS Haswell \texttt{f64} &
+    x86-64，AVX2/FMA，$6\times8$ &
+    \texttt{36df51a8...} &
+    \textbf{来源：}context 初始化、DGEMM 内核、pack kernel、构建标志和 GEMM\_UKR 接口
+    \newline \textbf{边界：}共享 BLIS 生成器与 \texttt{f64} adapter \\
+    OpenBLAS RV64GCV \texttt{f32} &
+    RISC-V，RVV/Zvl128b，$8\times8$ &
+    \texttt{b338322e...} &
+    \textbf{来源：}目标配置、SGEMM 内核、oncopy/otcopy packing 和内部 kernel ABI
+    \newline \textbf{边界：}共享 Contract Schema，包内生成器与 adapter \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+BLIS 将内核注册、块尺寸和 pack kernel 集中在架构 context 中，适合从结构化入口开始抽取\cite{VanZee2015BLIS}。抽取器先读取激活分支中的内核符号、MR/NR、MC/KC/NC、pack kernel 和编译 ISA，再到内核实现中交叉检查寄存器块。OpenBLAS 的目标配置、kernel 文件和 packing 路径组织方式不同，抽取器按其构建目标和内部 SGEMM 接口恢复相同语义字段\cite{OpenMathLibOpenBLAS}。
+
+来源类型包括配置宏、kernel registration、packing 例程、汇编或内联汇编接口、调用方、构建标志和运行探针。不同来源回答的问题不同。配置可以说明某个符号被注册，内核实现可以印证寄存器块，调用方则说明参数含义和 stride 约定。运行探针只证明某条实际调用链在给定环境中成立，不能倒推出未执行分支的全部语义。
+
+\subsection{Fact 记录格式}
+
+Fact 采用字段级记录，而不是把整个库配置保存为一个不可拆分的对象：
+
+\begin{equation}
+f=\langle
+id,\;scope,\;source,\;raw,\;normalized,\;evidence,\;review,\;notes
+\rangle .
+\label{eq:chapter3-fact-record}
+\end{equation}
+
+$scope$ 包含算子、数据类型、库、架构、指令特性和线程模式；$source$ 包含 revision、文件、行号和符号；$raw$ 保留源码表达，$normalized$ 给出统一字段名和值。$review$ 分开保存机器检查与人工签核。$notes$ 用于记录推导公式、条件分支、歧义和预期失效条件。
+
+证据等级 E1 至 E5 只描述证据来源和迁移风险。E1 是激活源码中的注册、常量、构建标志或 API 声明；E2 表示同一字段由第二实现位置印证；E3 表示由已核验字段按显式公式确定性推导；E4 是目标环境中的受控运行证据；E5 是尚未在目标环境校准的跨来源信息。人工确认不改变 E1 至 E5 的含义，系统另设签核字段。
+
+例如，BLIS Haswell 单精度的 MR=6、NR=16 由 context 配置取得，并在内核 setup 中交叉检查。256 bit 向量宽度和 \texttt{f32} 元素宽度可以推导出 8 个 lane。MC=168、KC=256、NC=4080 同样是可定位的源码事实，但其分类仍为 Performance Profile 属性。证据强不等于约束硬。
+
+\subsection{多来源冲突与处理}
+
+跨库比较在同一语义字段上进行。BLIS 与 OpenBLAS 在 Haswell 和 RVV128 上给出了四类实际冲突，见表~\ref{tab:chapter3-conflicts}。它们来自后端结构和配置差异，按出现频率选择一个值会破坏来源边界。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{多来源冲突与最终分类}
+  \label{tab:chapter3-conflicts}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.17\textwidth}
+    >{\raggedright\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{目标} & \textbf{冲突字段} & \textbf{BLIS} &
+    \textbf{OpenBLAS} & \textbf{分类与处理} \\
+    \midrule
+    Haswell \texttt{f32} &
+    register tile &
+    $6\times16$ &
+    $8\times4$ &
+    后端相关硬字段，保留两个独立 Contract \\
+    Haswell \texttt{f32} &
+    cache blocking &
+    MC/KC/NC=$168/256/4080$ &
+    \makecell[l]{P=320，Q=320，\\R=\texttt{sgemm\_r}} &
+    带来源软属性，不跨库覆盖 \\
+    RVV128 \texttt{f32} &
+    register tile &
+    $16\times4$ &
+    $8\times8$ &
+    后端相关硬字段，保留两个独立 Contract \\
+    RVV128 \texttt{f32} &
+    cache blocking &
+    MC/KC/NC=$320/640/3072$ &
+    P/Q/R=$128/240/12288$ &
+    带来源软属性，目标测量决定排序 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+register tile 同 packing 与内部 ABI 相连，因此按包隔离。缓存分块描述来源实现的性能选择，保留为带来源属性。系统不使用优先级把一个库的值静默写到另一个库上。若两个来源对同一硬字段给出不同值，而当前任务又无法确定使用哪个后端，该字段进入 Unresolved，直到 Contract 选择完成。
+
+冲突记录保存冲突标识、比较作用域、各来源值、风险类别、处理动作和决议依据。值被 shape 上界裁剪不属于跨来源冲突。例如，将 MC=168 裁剪到 $M=64$ 是参数域实例化，不应增加冲突计数。区分这两类记录可以避免把常规边界处理误写成知识不一致。
+
+\section{Microkernel Admissibility Contract Schema}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{chapter3_microkernel_contract_schema.pdf}
+  \caption{微内核可接纳性契约 Schema}
+  \label{fig:chapter3-contract-schema}
+\end{figure}
+
+Fact 说明来源实现中存在什么，Contract 说明当前微内核包接受什么。Contract 的最小结构写为
+
+\begin{equation}
+\begin{aligned}
+\mathcal{C}_k=\langle&
+id,\;sem,\;target,\;tile,\;memory,\;boundary,\;abi,\\
+&adapter,\;fallback,\;validity,\;provenance
+\rangle .
+\end{aligned}
+\label{eq:chapter3-contract}
+\end{equation}
+
+$sem$ 固定算子和数据类型；$target$ 固定机器类型与必需特性；$tile$ 描述 MR、NR 和 K 维行为；$memory$ 包含布局、stride、alignment 与 packing；$boundary$ 描述 tail 和累加；$abi$ 定义真实调用接口；$adapter$ 与 $fallback$ 分别给出有限补偿和安全退化；$validity$ 与 $provenance$ 用于版本失效和审计。
+
+\subsection{语义和目标条件}
+
+语义字段首先确认 payload 是系统支持的 GEMM 形式。当前包以 \texttt{linalg.matmul} 为入口，要求 A、B、C 的元素类型一致，并记录 $\alpha$、$\beta$ 和初始 C 的语义。Contract 不证明任意变换都保持这些语义。Transform verifier、编译检查和数值 reference 仍承担 L1 验证。
+
+目标字段包含 machine、architecture 和 required features。architecture 表示知识来源和内核命名所对应的架构 profile，required features 才是静态调用前必须满足的最小 ISA 条件。以 BLIS Haswell 包为例，当前检查要求 x86-64、AVX2 和 FMA。运行在具备这些特性的其他 x86 微架构上，只能说明指令条件满足，不能把来源性能排序解释为 Haswell 原生性能。
+
+Contract 选择在任务级完成。operation、dtype、machine 和 required features 任何一项不匹配时，该 Contract 不进入候选级 direct/adapt 检查。若任务仍有通用 lowering 或完整库入口，系统可以生成 fallback；没有正确退化路径时才 reject。
+
+\subsection{分块、布局与 packing 条件}
+
+MR 和 NR 描述微内核输出块，其硬约束范围是 direct 与 adapt 路径。两类候选的 $T_M$、$T_N$ 需要容纳整数个寄存器块，adapter 再处理矩阵边界。K 字段分别记录最小值、主循环步长、可接受的 remainder 和实际调用时传入的 K。单一的整除布尔值无法表达这些 adapter 能力。
+
+布局字段描述微内核边界处的数据对象。它不等同于 payload 的行主序或列主序标记。行主序 A、B 可以在调用前变成库约定的 packed panel；C 则通过 row stride 和 column stride 传给 wrapper。Contract 需要分别记录原始 layout、panel order、panel stride、C stride 和输出偏好。
+
+packing 字段包括是否必需、A/B panel 的形状倍数、schema 标识和可用 packer。direct 与 adapt 路径都要求 packing 义务已经物化。候选只声明 \texttt{pack\_mode=ab} 还不够，后续实现必须生成 panel，并让调用占位符引用这些 panel。若 pack pass 不存在，系统应转入 fallback，不能把字段匹配结果记为真实微内核调用。
+
+alignment 使用“已证明”“由 adapter 提供”和“未知”三个状态。来源没有给出精确字节对齐时，Contract 保留空值和核验状态，不事后补造数值。当前实现为新分配的 panel 提供对齐，但这不等价于原始 A、B、C 均满足同一对齐条件。
+
+\subsection{边界和调用协议}
+
+边界语义包括 M/N fringe、K remainder、$\beta$ 模式、临时 C 块和写回范围。BLIS 固定 MR/NR 微内核不能直接写越矩阵边界。adapter 对有效区域不足一个寄存器块的 C tile 分配临时缓冲，复制有效初值，完成微内核累加后只散射有效元素。A、B 越界位置在 packing 阶段填零。K 维调用传递当前 panel 的实际长度，不能把填零后的存储容量误当作有效 K。
+
+调用协议保存 wrapper 参数顺序、地址与 offset 的含义、C stride、$\alpha/\beta$、辅助结构和真实外部符号。BLIS 包使用 GEMM\_UKR ABI，并由 wrapper 构造 \texttt{auxinfo\_t} 与 context。OpenBLAS RVV 包使用其内部 SGEMM kernel ABI，因而需要另一套 adapter。两者共享字段名，不共享二进制调用约定。
+
+fallback 是 Contract 的必需字段。BLIS 调度包把通用 MLIR lowering 作为候选级 fallback；部署层还可以设置完整 BLIS guard。OpenBLAS RVV 包可以将完整 \texttt{cblas\_sgemm} 设为安全退化。fallback 的选择属于系统配置，不能从“目标微内核不可接纳”推导为 reject。
+
+\subsection{契约字段的证据与诊断语义}
+
+Contract 字段除取值外，还保存来源、检查阶段、失败路径和诊断字段。表~\ref{tab:chapter3-contract-fields} 给出第四章消费的主要字段组。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Contract 字段、来源、检查阶段与失败语义}
+  \label{tab:chapter3-contract-fields}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.14\textwidth}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}
+    >{\raggedright\arraybackslash}p{0.31\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{字段组} & \textbf{代表字段} & \textbf{来源与检查} &
+    \textbf{失败语义} \\
+    \midrule
+    语义 &
+    operation、dtype、累加 &
+    \textbf{来源：}payload、API、调用方
+    \newline \textbf{检查：}任务匹配与 L1 &
+    fallback 或 reject，另做数值检查 \\
+    目标 &
+    machine、ISA、feature &
+    \textbf{来源：}构建标志、内核实现
+    \newline \textbf{检查：}任务级选择 &
+    不选择该 Contract \\
+    寄存器块 &
+    MR、NR、K-step &
+    \textbf{来源：}context、kernel setup
+    \newline \textbf{检查：}候选级传播 &
+    adapt、fallback 或 reject \\
+    内存接口 &
+    layout、stride、alignment &
+    \textbf{来源：}packer、调用方、ABI
+    \newline \textbf{检查：}候选级与物化前 &
+    生成 adapter 或安全退化 \\
+    Packing &
+    panel schema、order、packer &
+    \textbf{来源：}pack kernel、运行探针
+    \newline \textbf{检查：}路径生成与 IR 检查 &
+    禁止记录为 direct/adapt \\
+    边界 &
+    M/N/K tail、$\beta$、scatter &
+    \textbf{来源：}kernel、adapter、reference
+    \newline \textbf{检查：}路径生成与运行时 &
+    adapt，能力不足则退化 \\
+    ABI 与版本 &
+    callee、aux、revision、hash &
+    \textbf{来源：}声明、符号、manifest
+    \newline \textbf{检查：}链接、加载与失效检查 &
+    reject 或标记 Contract 失效 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+Contract eligibility 可写成字段谓词的合取：
+
+\begin{equation}
+\begin{aligned}
+\mathrm{Eligible}(T,q,\mathcal{C}_k)=\;&
+\phi_{\mathrm{sem}}\land\phi_{\mathrm{target}}
+\land\phi_{\mathrm{tile}}\land\phi_{k}\\
+&\land\phi_{\mathrm{layout}}\land\phi_{\mathrm{stride}}
+\land\phi_{\mathrm{packing}}\land\phi_{\mathrm{boundary}}
+\land\phi_{\mathrm{abi}} .
+\end{aligned}
+\label{eq:chapter3-eligibility}
+\end{equation}
+
+式~\eqref{eq:chapter3-eligibility} 只说明声明字段可以形成某条微内核路径。packing 是否真的生成、符号是否链接、运行时是否进入该路径，仍需第四章的物化和观测机制确认。
+
+这里采用的是相对于当前 Contract 的健全性目标，而不是关于任意程序状态的形式定理：checker 输出 direct 时，Schema 中已声明的硬谓词均应成立；输出 adapt 时，未直接成立的条件必须由当前 adapter capability 覆盖，并转化为显式 actions。对应的有界完备性目标是：在固定 Schema、微内核包和 adapter 能力范围内，存在安全 direct/adapt 路径的候选不应被错误退化或拒绝。第五章的 30 个独立 gold case 和冻结域内路径一致性为这两个目标提供经验支持，不构成形式证明。
+
+checker 的语义域是 Task/Candidate descriptor 与当前 Contract Schema。packed buffer 的实际内容、对象生命周期、未写入 descriptor 的别名关系和越界写入不在该语义域内，分别由编译期分析、运行时保护和数值 reference 承担。把这些模型外状态排除在 checker 结论之外，是对职责边界的限定，而不是把“任意内存安全”计入 Contract-relative soundness 后再声明失败。
+
+\noindent\textbf{代码清单 3-1\quad BLIS \texttt{f32} Contract 精简实例}
+\begin{verbatim}
+id: blis_haswell_f32_6x16
+operation: linalg.matmul
+dtype: f32
+target:
+  machine: x86_64
+  required_features: [avx2, fma]
+kernel: {symbol: bli_sgemm_haswell_asm_6x16, mr: 6, nr: 16}
+k_constraint: {main_loop_step: 4, remainder_supported: true}
+packing: {required: true, schema_id: blis_haswell_f32_ab_v1}
+capabilities: {mn_tail: true, k_tail: true, beta: [zero, one]}
+abi: {schema_id: blis_gemm_ukr_f32_v1}
+fallback_path: generic_mlir_tiled_loop
+\end{verbatim}
+
+完整对象还包含源码 hash、panel order、stride、alignment 状态、辅助结构和诊断字段。精简实例只展示候选生成所需的主干，不作为独立于完整 Schema 的第二份真值；34 个叶字段及其类型、检查阶段、失败动作和来源要求见附录~\ref{sec:appendix-contract-schema}。
+
+\section{硬可接纳知识与软性能知识分离}
+
+Contract 和 Performance Profile 的分界按失败后果确定。dtype、ISA、panel order、stride、tail 累加和 ABI 违反后可能导致错误调用或错误结果，属于硬字段。缓存块、候选顺序和来源分块偏好只在候选已经可执行时比较性能，属于软属性。无法确认字段是否影响语义时，系统把它留在 Unresolved，不通过“保守优先级”绕过证据缺口。
+
+Performance Profile 表示为
+
+\begin{equation}
+\mathcal{P}=
+\langle
+features,\;scope,\;source,\;calibration,\;ranking,\;validity
+\rangle ,
+\label{eq:chapter3-performance-profile}
+\end{equation}
+
+其中 $features$ 可以包含缓存接近度、tile 与来源 block 的关系、packing 成本提示和 workload family；$calibration$ 记录是否使用目标数据以及数据切分；$ranking$ 只返回分数、排序或采样权重。Profile 的消费端满足
+
+\begin{equation}
+\mathrm{Path}(T,q,\mathcal{C}_k,\mathcal{P})
+=
+\mathrm{Path}(T,q,\mathcal{C}_k),
+\label{eq:chapter3-soft-does-not-change-path}
+\end{equation}
+
+即软属性不能把 fallback 改成 direct，也不能把 reject 变成可测候选。它可以改变 $\mathcal{C}$ 内候选的顺序，但不能改变 Contract 边界。
+
+缓存块事实尤其容易被误用。MC、KC、NC 是来源库和来源机器上的实现选择，它们可以产生候选邻域或排序特征，却不应成为全局正确性条件。MR/NR 也需要按用途拆分。它们是 direct eligibility 和 fringe 组织的硬字段，但“所有合法候选必须采用来源 MR/NR 倍数”是更强的性能假设，不能由微内核接口自动推出。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.86\textwidth]{chapter3_provenance_conflict_invalidation.pdf}
+  \caption{字段 provenance、冲突处理与版本失效}
+  \label{fig:chapter3-provenance-lifecycle}
+\end{figure}
+
+图~\ref{fig:chapter3-provenance-lifecycle} 强调 provenance 不只是引用信息。Contract 保存自身 Schema 版本、来源 revision 与 hash、生成器版本和 adapter 能力。任一依赖改变后，对象先进入 \texttt{stale} 状态。重新解析源码只能恢复 Fact；Contract 还需重新执行字段检查和适配器验证。历史实验继续引用原 revision，不回写为新版本结果。
+
+冲突决议采用固定顺序：算子语义和 Transform 合法性优先，随后是当前目标 Contract、同后端源码事实、目标运行证据，最后才是未校准的跨来源性能属性。高层规则抑制低层规则时必须记录双方来源和处理动作。该顺序用于消除消费端歧义，不用于制造一个跨库“平均配置”。
+
+\section{静态检查接口与三个微内核包实例}
+
+\subsection{字段级检查与诊断记录}
+
+第三章向第四章提供字段级检查记录。给定任务上下文 $T$、候选 $q$ 和 Contract $\mathcal{C}_k$，检查器返回
+
+\begin{equation}
+\mathrm{Check}(T,q,\mathcal{C}_k)=
+\langle
+decision,\;phase,\;field,\;reason,\;obligations,\;provenance
+\rangle .
+\label{eq:chapter3-check-interface}
+\end{equation}
+
+$decision$ 取 direct、adapt、fallback 或 reject；$phase$ 表示首次不能继续的阶段；$field$ 指向具体 Contract 字段；$reason$ 使用稳定 reason code；$obligations$ 列出 packing、padding、临时缓冲、scatter 或 K remainder 等动作。provenance 连接候选、Contract、Fact 和源码 hash。
+
+检查按任务级和候选级两段执行。任务级检查 operation、dtype、machine 和 required features，先排除不适用 Contract。候选级检查正 tile、静态 extent、MR/NR、K-step、vector lane、packing、layout、stride、alignment、tail 能力和 call convention。只要存在正确 fallback，接口不匹配通常返回 fallback，而不是 reject。reject 保留给不支持的 payload、非法 Transform 参数或不存在任何安全执行路径的情况。
+
+诊断记录必须保存首次失败字段，同时允许附加后续不匹配项。例如，未请求 packing 的候选可能同时不满足 panel layout 和 microkernel ABI。首次失败用于定位，完整列表用于审计。软评分在决策完成后计算，不能修改 \texttt{decision}、\texttt{phase} 或 \texttt{field}。
+
+静态检查的能力止于声明元数据。若 descriptor 声称 packed B 顺序正确，而内存内容已经损坏，checker 无法从字段中发现该错误。该故障类别由运行时内存保护、reference GEMM 和差分测试承担。Contract 因而是可诊断安全门，不是对任意内存状态的形式证明。
+
+\subsection{BLIS Haswell \texttt{f32}/\texttt{f64}}
+
+两个 BLIS 包共享 operation、x86-64 目标、AVX2/FMA 条件、GEMM\_UKR ABI 结构、A/B panel 抽象和 direct/adapt/fallback 语义。数据类型、NR、pack kernel、panel schema、wrapper 符号和标量类型按 Contract 实例化。单精度包绑定 \texttt{bli\_sgemm\_haswell\_asm\_6x16}，双精度包绑定 \texttt{bli\_dgemm\_haswell\_asm\_6x8}。
+
+共享不表示两个包拥有相同参数值。单精度寄存器块是 $6\times16$，双精度是 $6\times8$；二者的来源 MC 也不同。核心生成器读取 Contract 字段，不按 package id 写死分支。adapter 层仍需提供类型正确的 wrapper、$\alpha/\beta$、panel 元素类型和真实 callee。
+
+当前 \texttt{f64} 包证明同一 BLIS 后端的第二数据类型能够使用现有 Schema 和核心生成器。它不是从一个纯 \texttt{f32} 历史版本开始的 clean-room 扩展证据，也不代表第二库或第二 ISA。本文只主张当前对象和实现结构的复用。
+
+\subsection{OpenBLAS RV64GCV}
+
+OpenBLAS RV64GCV 包使用 \texttt{f32} $8\times8$ Contract，要求 RV64GC、RVV 和 Zvl128b。其 A/B panel schema、内部 \texttt{sgemm\_kernel} ABI、输出 tile 语义和尾部处理与 BLIS 不同。package-local adapter 负责显式 packing、内部 kernel 调用和行主序写回；安全 fallback 可以连接完整 \texttt{cblas\_sgemm}。
+
+该包复用 Contract 的语义分组、字段级诊断和四类路径，但当前仍使用包内候选生成和部署代码。共享接口通过统一候选记录连接到调优器，底层生成器没有被宣称为跨库零修改。表~\ref{tab:chapter3-package-boundary} 汇总三个包的共性和特化项。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{三个微内核包的共享字段与包内特化}
+  \label{tab:chapter3-package-boundary}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.20\textwidth}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{接口层} & \textbf{共享语义} & \textbf{BLIS Haswell 包} &
+    \textbf{OpenBLAS RVV 包} \\
+    \midrule
+    Contract Schema &
+    operation、dtype、target、tile、packing、tail、ABI、版本 &
+    \texttt{f32}/\texttt{f64} 两个实例 &
+    \texttt{f32} $8\times8$ 实例 \\
+    Checker &
+    阶段、字段、reason code、四类 decision &
+    共享 BLIS 核心检查路径 &
+    复用语义，读取 RVV Contract \\
+    Packing 与 ABI &
+    obligation 与 provenance 接口 &
+    BLIS panel、GEMM\_UKR wrapper &
+    OpenBLAS panel、内部 SGEMM wrapper \\
+    候选生成 &
+    统一候选记录和 canonical key &
+    \texttt{f32}/\texttt{f64} 复用核心生成器 &
+    当前为 package-local 路径 \\
+    安全退化 &
+    fallback 可观察、不得伪装为 direct &
+    通用 MLIR 或部署 guard &
+    完整 \texttt{cblas\_sgemm} guard \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+三个包共同说明 Schema 复用和实现复用是两个问题。字段词汇相同，可以让 checker、实验记录和诊断工具使用一致接口；packing、ABI 和代码生成仍可能按库和 ISA 特化。第五章将分别评价 Schema 共性、核心生成器复用、合法执行和性能排序，避免用一种“可迁移”概括四个层次。
+
+\section{本章小结}
+
+本章把高性能库知识整理为四类对象。Fact 保存固定源码中的字段和证据；Contract 定义外部微内核的硬接纳边界；Performance Profile 保存只能影响排序的软属性；Unresolved 阻止证据不足或冲突字段被自动采用。多来源 register tile 以包为单位形成独立 Contract，缓存分块则保留来源标签，不进行静默合并。
+
+Contract Schema 覆盖算子和目标条件、MR/NR 与 K 维行为、layout、stride、packing、tail、累加语义、ABI、adapter、fallback 和版本失效。字段级检查接口返回 decision、首次失败阶段、诊断字段、变换义务和 provenance。BLIS Haswell \texttt{f32}/\texttt{f64} 复用同一核心生成结构，OpenBLAS RV64GCV 复用 Schema 和路径语义，但保留包内生成器与 adapter。下一章以这些对象为输入，生成规范化唯一候选并物化真实执行路径。

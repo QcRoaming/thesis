@@ -1,0 +1,32 @@
+{
+  "experiment_id": "thesis.chapter5_blis_adapter",
+  "task": {
+    "id": "anchor_192x256x256_f32",
+    "op": "linalg.matmul",
+    "dtype": "f32",
+    "m": 192,
+    "n": 256,
+    "k": 256,
+    "target": "x86_64-avx2-fma"
+  },
+  "candidate": {
+    "tile_m": 24,
+    "tile_n": 32,
+    "tile_k": 64,
+    "mr": 6,
+    "nr": 16,
+    "pack_a": true,
+    "pack_b": true
+  },
+  "variants": [
+    "fallback_vectorized",
+    "direct_blis_6x16"
+  ],
+  "source_contract": "BLIS Haswell f32 6x16 microkernel contract",
+  "implementation_files": [
+    "midend/include/Dialect/Microkernel/TransformOps.td",
+    "midend/lib/Dialect/Microkernel/TransformOps.cpp",
+    "midend/lib/Conversion/MatMulOptimization/MatMulBlisMicrokernel.cpp"
+  ],
+  "claim_boundary": "Rank-2 row-major f32 GEMM on one x86-64 AVX2/FMA host. Static direct, M/N/K fringe adapt, and one-binary dynamic-shape execution are implemented for the fixed BLIS Haswell 6x16 microkernel. Dynamic multi-shape speedups use a scalar-loop fallback; arbitrary layouts, additional dtypes/contracts, optimized dynamic baselines, and cross-host statistics remain outside this experiment."
+}

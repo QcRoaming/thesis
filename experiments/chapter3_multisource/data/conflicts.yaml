@@ -1,0 +1,42 @@
+schema_version: 1
+conflicts:
+- id: haswell_sgemm_register_tile
+  scope: same ISA family and dtype
+  knowledge_class: compatibility
+  observations:
+    blis.haswell.gemm.f32: 6x16
+    openblas.haswell.gemm.f32: 8x4
+  resolution: retain two backend-specific hard contracts
+- id: haswell_sgemm_cache_blocking
+  scope: same ISA family and dtype
+  knowledge_class: performance
+  observations:
+    blis.haswell.gemm.f32:
+      mc: 168
+      kc: 256
+      nc: 4080
+    openblas.haswell.gemm.f32:
+      p: 320
+      q: 320
+      r: sgemm_r
+  resolution: retain as source-labelled soft priors and calibrate online
+- id: rvv128_sgemm_register_tile
+  scope: RVV with VLEN=128 and f32
+  knowledge_class: compatibility
+  observations:
+    blis.rv64iv_vlen128.gemm.f32: 16x4
+    openblas.riscv64_zvl128b.gemm.f32: 8x8
+  resolution: retain two backend-specific hard contracts
+- id: rvv128_sgemm_cache_blocking
+  scope: RVV with VLEN=128 and f32
+  knowledge_class: performance
+  observations:
+    blis.rv64iv_vlen128.gemm.f32:
+      mc: 320
+      kc: 640
+      nc: 3072
+    openblas.riscv64_zvl128b.gemm.f32:
+      p: 128
+      q: 240
+      r: 12288
+  resolution: retain as source-labelled soft priors and calibrate on K230

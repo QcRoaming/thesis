@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.cgo_local_extension",
+  "source_experiment": "thesis.chapter6_evaluation",
+  "pool_size": 28,
+  "budget": 25,
+  "seeds": [11, 29, 41, 73, 101],
+  "measurement": {
+    "cpu_affinity": 0,
+    "warmups": 2,
+    "repeats": 7,
+    "inner_iters": 1,
+    "independent_trials": 3
+  },
+  "compile_cost_guard": {
+    "max_vector_ir_work": 131072,
+    "minimum_vector_tile_area": 768
+  },
+  "true_online": {
+    "methods": [
+      "C0_random",
+      "C1_static_blis",
+      "C2_offline_calibrated",
+      "C3_online_calibrated"
+    ],
+    "splits": ["holdout"]
+  },
+  "optuna": {
+    "version": "4.9.0",
+    "sampler": "TPESampler",
+    "n_startup_trials": 5,
+    "duplicate_policy": "prune_and_resample_until_unique_budget"
+  },
+  "f64_contract": {
+    "microkernel": "bli_dgemm_haswell_asm_6x8",
+    "wrapper": "buddy_blis_dgemm_6x8",
+    "mr": 6,
+    "nr": 8,
+    "main_loop_k_step": 4
+  },
+  "claim_boundary": "Single-thread row-major x86-64 results. Target observations in true-online and Optuna trajectories are fresh benchmark subprocesses and are never read from the frozen corpus before selection. The f64 study uses the BLIS Haswell dgemm 6x8 contract. Cross-host evidence is tracked separately."
+}

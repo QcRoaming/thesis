@@ -1,0 +1,61 @@
+
+/buddy-mlir/jlq/thesis/experiments/outputs/rvv/rvv_saxpy.o:	file format elf64-littleriscv
+
+Disassembly of section .text:
+
+0000000000000000 <saxpy>:
+       0: 00a05063     	blez	a0, 0x0 <saxpy>
+       4: c22028f3     	csrr	a7, vlenb
+       8: 0018d793     	srli	a5, a7, 0x1
+       c: 4841         	li	a6, 0x10
+       e: 873e         	mv	a4, a5
+      10: 00f86063     	bltu	a6, a5, 0x10 <saxpy+0x10>
+      14: 4741         	li	a4, 0x10
+      16: 00e57063     	bgeu	a0, a4, 0x16 <saxpy+0x16>
+      1a: 4801         	li	a6, 0x0
+      1c: 080a         	slli	a6, a6, 0x2
+      1e: 00251713     	slli	a4, a0, 0x2
+      22: 01068533     	add	a0, a3, a6
+      26: 9642         	add	a2, a2, a6
+      28: 95c2         	add	a1, a1, a6
+      2a: 96ba         	add	a3, a3, a4
+      2c: 0005a787     	flw	fa5, 0x0(a1)
+      30: 00062707     	flw	fa4, 0x0(a2)
+      34: 00e7f7d3     	fadd.s	fa5, fa5, fa4
+      38: 00f52027     	fsw	fa5, 0x0(a0)
+      3c: 0511         	addi	a0, a0, 0x4
+      3e: 0611         	addi	a2, a2, 0x4
+      40: 0591         	addi	a1, a1, 0x4
+      42: 00d51063     	bne	a0, a3, 0x42 <saxpy+0x42>
+      46: 8082         	ret
+      48: 00189293     	slli	t0, a7, 0x1
+      4c: 40b68733     	sub	a4, a3, a1
+      50: 4801         	li	a6, 0x0
+      52: 00576063     	bltu	a4, t0, 0x52 <saxpy+0x52>
+      56: 40c68733     	sub	a4, a3, a2
+      5a: 00576063     	bltu	a4, t0, 0x5a <saxpy+0x5a>
+      5e: 0038d893     	srli	a7, a7, 0x3
+      62: 00289813     	slli	a6, a7, 0x2
+      66: 01f89713     	slli	a4, a7, 0x1f
+      6a: 41070733     	sub	a4, a4, a6
+      6e: 00a77833     	and	a6, a4, a0
+      72: 40f80733     	sub	a4, a6, a5
+      76: 02f75733     	divu	a4, a4, a5
+      7a: 0712         	slli	a4, a4, 0x4
+      7c: 0741         	addi	a4, a4, 0x10
+      7e: 031708b3     	mul	a7, a4, a7
+      82: 98ae         	add	a7, a7, a1
+      84: 8336         	mv	t1, a3
+      86: 83b2         	mv	t2, a2
+      88: 87ae         	mv	a5, a1
+      8a: 0d107757     	vsetvli	a4, zero, e32, m2, ta, ma
+      8e: 2287e407     	vl2re32.v	v8, (a5)
+      92: 2283e507     	vl2re32.v	v10, (t2)
+      96: 9796         	add	a5, a5, t0
+      98: 9396         	add	t2, t2, t0
+      9a: 02851457     	vfadd.vv	v8, v8, v10
+      9e: 22830427     	vs2r.v	v8, (t1)
+      a2: 9316         	add	t1, t1, t0
+      a4: 01179063     	bne	a5, a7, 0xa4 <saxpy+0xa4>
+      a8: 00a81063     	bne	a6, a0, 0xa8 <saxpy+0xa8>
+      ac: a001         	j	0xac <saxpy+0xac>

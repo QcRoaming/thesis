@@ -1,0 +1,15 @@
+\begin{table}[htbp]
+  \centering
+  \caption{执行路径条件、动作与当前实现边界}
+  \label{tab:chapter4-paths}
+  \begin{tabular}{p{0.10\textwidth}p{0.25\textwidth}p{0.25\textwidth}p{0.30\textwidth}}
+    \toprule
+    路径 & Contract 条件 & 动作 & 当前 Transform/观测 \\
+    \midrule
+    direct & 全部目标 Contract 条件满足 & 请求 packing 与目标 kernel 调用 & tiling + optional vectorization + bufferization；当前无 BLIS call，观测为 fallback \\
+    adapt & 仅存在已声明的有限 tail/K 余数差异 & 插入有限 fringe/cleanup 适配 & 边界感知 tiled loops（affine.min）；当前无 BLIS call，观测为 fallback \\
+    fallback & Contract 不匹配或目标接口条件缺失 & 执行通用 MLIR tiled-loop lowering & generic tile + bufferization；实际编译、运行并通过正确性 \\
+    reject & 语义/Transform 非法或不存在可执行 fallback & 候选不进入调优空间 & 不实例化；静态原因码记录 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_application_validation.local_x86_pilot_instability",
+  "status": "PILOT_REJECTED_PROTOCOL_REVISED",
+  "target": "i7_10750h_wsl2",
+  "pilot_protocol": {
+    "cpu_affinity": 0,
+    "warmups": 1,
+    "repeats_per_process": 3,
+    "process_trials": 3,
+    "batch_count": 1,
+    "inner_iters": 1
+  },
+  "pilot_runs": [
+    {
+      "ordinal": 1,
+      "pool_oracle_relative_to_blis_geomean": 1.177377253894222,
+      "raw_status": "not_preserved",
+      "disclosure": "The initial runner overwrote its output root. The aggregate value is retained from stdout, but this run is ineligible as evidence because its raw rows were not archived."
+    },
+    {
+      "ordinal": 2,
+      "pool_oracle_relative_to_blis_geomean": 0.8181225663387061,
+      "raw_status": "archived",
+      "raw_trials": "raw/pilots/local_x86_pilot2/trials.csv",
+      "summary": "raw/pilots/local_x86_pilot2/summary.json",
+      "raw_trials_sha256": "9fbd71aa7d76ab16b2a26d228ddfea88435abb8146b9879a4ca65254bc284292",
+      "summary_sha256": "cabe5b457308814ec2da04040c05320bd1caee90bd5a5a556b10ee8b200f3350"
+    }
+  ],
+  "instability": {
+    "relative_change_between_pilot_point_estimates": 0.4392546875555159,
+    "examples_from_second_pilot_ms": [132.834917, 116.028992],
+    "diagnosis": "Three process medians were insufficient under WSL2 scheduling noise; the median could still be controlled by an outlier and the point estimate was not repeatable."
+  },
+  "revision": {
+    "decision": "Neither pilot is used as paper evidence.",
+    "confirmatory_protocol": "data/experiment_config.json#local_x86",
+    "changes": [
+      "preserve three independent batches",
+      "collect nine process medians per variant across three batches",
+      "increase within-process repetitions",
+      "scale inner iterations by workload FLOPs",
+      "pin a declared CPU and force common thread-count environment variables to one",
+      "gate claims on robust per-variant and cross-batch stability"
+    ]
+  },
+  "protocol_dry_run": {
+    "status": "aborted_before_completion_and_excluded",
+    "reason": "The initial 3x5x5 configuration projected excessive process-initialization cost; it was stopped during the first batch before any aggregate was produced.",
+    "effect_on_final_protocol": "Independent batches were retained; process trials and within-process repeats were reduced to three before the confirmatory protocol was frozen."
+  }
+}

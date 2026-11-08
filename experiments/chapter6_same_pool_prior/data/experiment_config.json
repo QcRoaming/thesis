@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "experiment_id": "thesis.chapter6_same_pool_prior",
+  "source_experiments": [
+    "thesis.cgo_local_extension",
+    "thesis.x86_cross_host"
+  ],
+  "dtype": "f64",
+  "contract": "BLIS Haswell dgemm 6x8",
+  "pool_metadata": "cgo_extension/processed/f64_contract_pools.csv",
+  "workloads": "chapter6_evaluation/data/workloads.json",
+  "environments": [
+    {
+      "id": "i7_10750h_wsl2",
+      "label": "Intel Core i7-10750H (WSL2)",
+      "aggregates": "cgo_extension/processed/f64_contract_aggregates.csv"
+    },
+    {
+      "id": "i9_14900_linux",
+      "label": "Intel Core i9-14900 (Ubuntu 20.04)",
+      "aggregates": "x86_cross_host/imported/thesis-x86-result--20260716T115026Z/cgo_extension/processed/f64_contract_aggregates.csv"
+    }
+  ],
+  "active_search_parameters": ["tile_m", "tile_n", "tile_k"],
+  "fixed_contract_parameters": {
+    "pack_mode": "ab",
+    "mr": 6,
+    "nr": 8
+  },
+  "excluded_inactive_parameters": {
+    "vectorize": "The current BLIS call-adapter schedule does not consume this field.",
+    "pack_mode": "Packing is a hard Contract requirement and is fixed to ab.",
+    "predicted_path": "direct/adapt is derived by the compatibility checker, not searched."
+  },
+  "methods": {
+    "B2_no_prior_baco": "BaCO with uniform no-replacement DOE and EI over the common canonical pool.",
+    "B3_static_prior_baco": "BaCO with a static-prior-ranked no-replacement warm start and EI-PIBO over the same pool.",
+    "B4_calibrated_prior_baco": "BaCO with a calibrated-prior-ranked no-replacement warm start and EI-PIBO over the same pool."
+  },
+  "budget": 10,
+  "checkpoints": [5, 10],
+  "doe_samples": 4,
+  "seeds": [11, 29, 41, 73, 101],
+  "calibration": {
+    "prior_precision_candidates": [0.01, 0.1, 1.0, 10.0],
+    "model_weight_candidates": [0.25, 0.5, 1.0, 2.0],
+    "validation_seeds": [11, 29],
+    "minimum_noise_variance": 0.0001,
+    "prior_probability_floor": 1e-06,
+    "validation_objective": "mean_log_simple_regret_auc"
+  },
+  "baco": {
+    "version": "3.0.0",
+    "model": "gaussian_process",
+    "gp_backend": "gpy",
+    "hyperparameter_optimization_iterations": 1,
+    "local_search_random_points": 100,
+    "local_search_starting_points": 5,
+    "allow_duplicate_samples": false
+  },
+  "statistics": {
+    "bootstrap_seed": 20260718,
+    "bootstrap_replicates": 20000,
+    "confidence_level": 0.95,
+    "cluster_unit": "workload"
+  },
+  "acceptance": {
+    "required_environment_count": 2,
+    "benefit_comparison": "B4_calibrated_prior_baco_vs_B2_no_prior_baco",
+    "benefit_checkpoints": [5, 10],
+    "minimum_speedup": 1.0,
+    "require_ci_lower_above_minimum": true,
+    "require_common_pool_oracle_invariance": true,
+    "require_unique_measurement_budget": true,
+    "require_zero_holdout_prior_target_reads": true
+  },
+  "claim_boundary": "Offline policy replay over two independently measured, complete f64 Contract corpora. Every method uses the same canonical finite pool and the same unique-candidate budget. Design workloads fit the calibrated prior, validation workloads select hyperparameters, and holdout runtimes are revealed only after BaCO selects a candidate. Results do not establish multithreaded, non-row-major, non-x86, or end-to-end application generalization."
+}

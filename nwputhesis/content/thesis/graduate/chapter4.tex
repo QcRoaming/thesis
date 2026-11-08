@@ -1,0 +1,580 @@
+% !TeX root = ../../../graduate.tex
+%% 第四章
+
+\chapter{契约驱动的调度空间生成与系统实现}
+\chaptermark{契约驱动的调度空间生成与系统实现}
+\label{chap:contract-space-system}
+
+第三章得到的 Contract 仍是声明对象。它说明某个微内核包接受哪些数据和调用方式，但 tile 参数、packing 循环和外部调用还需要编译器生成。Transform Dialect 可以承载这些变换，也要求调用方明确给出匹配对象、参数和执行次序\cite{LLVMProjectTransformDialect,Luecke2025TransformDialect}。自动调优器消费可评价的参数域，不解释微内核 ABI\cite{Hellsten2023BaCO}。从 Contract 到调优候选之间还缺少一层确定的编译过程。
+
+该编译过程先用任务上下文选择 Contract，再对通用参数域执行条件化构造和字段级检查，将候选分为 direct、adapt、fallback 和 reject。路径确定后，系统分析实际消费的参数，将不活跃参数规范为固定值，并按 canonical key 去除等价候选。保留下来的候选携带 Transform 配方、packing 义务、目标 wrapper、诊断和 provenance。调优器只选择候选 token，真实评价仍经过 Transform、LLVM、链接、执行和数值检查。
+
+这里讨论方法和实现接口。候选密度、路径一致性、固定预算结果和完整库对照在第五章统一评价。系统实现覆盖 BLIS Haswell \texttt{f32} $6\times16$、\texttt{f64} $6\times8$ 以及 OpenBLAS RV64GCV \texttt{f32} $8\times8$ 三个包；它们共享的层次并不相同。
+
+\section{系统输入、输出与总体架构}
+
+一次空间生成任务由任务上下文、目标 Contract、通用参数域和可选 Performance Profile 构成。任务上下文写为
+
+\begin{equation}
+T=\langle
+op,\;dtype,\;shape,\;layout,\;stride,\;target,\;features,\;
+adapters,\;fallback
+\rangle .
+\label{eq:chapter4-task-context}
+\end{equation}
+
+$shape$ 按 $M\times K\times N$ 记录；$target$ 与 $features$ 分别表示机器类型和可用 ISA；$adapters$ 声明当前系统已经实现的 packing、M/N fringe、K remainder、layout conversion 和 alignment copy；$fallback$ 指明专用路径不可用时的正确执行方式。未声明的能力不能由 checker 推测。
+
+设通用参数域为 $G_0$，目标 Contract 为 $\mathcal{C}_k$，软策略为 $\mathcal{P}$。系统编译函数表示为
+
+\begin{equation}
+\bigl(\mathcal{Q},\mathcal{C}\bigr)
+=
+\mathrm{CompileSpace}(T,\mathcal{C}_k,G_0,\mathcal{P}),
+\label{eq:chapter4-space-compile}
+\end{equation}
+
+输出 $\mathcal{Q}$ 是去除 reject 后的规范化可执行候选集，其中可以同时包含 direct、adapt 和 fallback；$\mathcal{C}\subseteq\mathcal{Q}$ 只保留 direct/adapt，是第五章评价的硬 Contract 可调用空间。区分这两个集合可以保留安全回退，同时避免把 fallback 计入可调用候选密度。每个候选不只是 tile 元组，而是
+
+\begin{equation}
+q=\langle
+token,\;\theta,\;key,\;path,\;obligations,\;transform,\;
+diagnostics,\;provenance
+\rangle .
+\label{eq:chapter4-candidate-record}
+\end{equation}
+
+$\theta$ 保存原始参数，$key$ 是路径相关的规范键，$path$ 是预期执行路径，$obligations$ 记录必须物化的变换。$transform$ 指向可实例化的 Transform 配方；$diagnostics$ 与 $provenance$ 分别连接 checker 和第三章的知识对象。表~\ref{tab:chapter4-io} 汇总方法接口。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{系统输入、输出与候选记录字段}
+  \label{tab:chapter4-io}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.17\textwidth}
+    >{\raggedright\arraybackslash}p{0.47\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{对象} & \textbf{字段与来源} & \textbf{消费方} \\
+    \midrule
+    任务上下文 $T$ &
+    \textbf{字段：}算子、shape、dtype、layout、target、adapter
+    \newline \textbf{来源：}payload IR、部署配置 &
+    Contract 选择与 checker \\
+    Contract $\mathcal{C}_k$ &
+    \textbf{字段：}target、MR/NR、K、packing、tail、ABI
+    \newline \textbf{来源：}第三章 Fact 与核验记录 &
+    路径生成、packing pass、wrapper \\
+    通用域 $G_0$ &
+    \textbf{字段：}tile、pack mode、通用 vectorize
+    \newline \textbf{来源：}调度模板与实验配置 &
+    有限枚举器 \\
+    Performance Profile $\mathcal{P}$ &
+    \textbf{字段：}来源特征、目标校准、排序权重
+    \newline \textbf{来源：}第三章软属性与目标数据 &
+    候选排序，不修改路径 \\
+    候选 $q$ &
+    \textbf{字段：}token、参数、canonical key、path、义务、诊断
+    \newline \textbf{来源：}Contract 编译器 &
+    Transform 实例化与调优器 \\
+    评价记录 &
+    \textbf{字段：}编译、正确性、observed path、时间、manifest
+    \newline \textbf{来源：}真实 evaluator &
+    调优反馈与第五章统计 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.94\textwidth]{chapter4_contract_space_execution_architecture.pdf}
+  \caption{Contract 驱动空间生成与真实执行总体架构}
+  \label{fig:chapter4-architecture}
+\end{figure}
+
+图~\ref{fig:chapter4-architecture} 中，知识、空间、调度、后端和证据层依次完成事实供给、候选构造、调度实例化、路径物化与联合验证，BLIS/OpenBLAS 的包内字段、adapter 和生成器保持在各自边界内。控制信息从 Contract 编译器流向调优器和后端，运行结果反向进入 evaluator。反馈不会修改 Contract。需要调整硬边界时，必须回到第三章的 Fact、冲突和版本核验流程；目标测量只允许更新 $\mathcal{P}$。
+
+\section{Contract 编译和四类路径生成}
+
+\subsection{任务级匹配}
+
+Contract 选择先于参数枚举。对 Contract registry $\mathbb{K}$，系统构造适用集合
+
+\begin{equation}
+\mathbb{K}(T)=
+\left\{
+\mathcal{C}_k\in\mathbb{K}\ \middle|\
+\begin{aligned}
+&\mathcal{C}_k.op=T.op,\quad
+\mathcal{C}_k.dtype=T.dtype,\\
+&\mathcal{C}_k.machine=T.machine,\quad
+\mathcal{C}_k.features\subseteq T.features
+\end{aligned}
+\right\}.
+\label{eq:chapter4-contract-selection}
+\end{equation}
+
+若集合为空，系统不伪造一个“最接近”的 Contract。存在通用 lowering 或完整库 guard 时，任务只生成 fallback；不存在安全执行路径时返回 reject。集合包含多个对象时，选择记录比较架构匹配、适配义务和稳定 Contract id，并保存所有候选及未选原因。性能评分不参与硬资格判断。
+
+任务级匹配还检查 Contract 的 revision、Schema 和 adapter 版本。任一对象标记为 \texttt{stale} 时，系统停止专用路径生成，直到重新核验。这个检查避免源码更新后继续使用旧的 panel 或 ABI 假设。
+
+\subsection{候选级约束传播}
+
+当前通用域包含
+
+\begin{equation}
+G_0=
+D_M\times D_N\times D_K\times
+D_{\mathrm{pack}}\times D_{\mathrm{vec}},
+\label{eq:chapter4-g0}
+\end{equation}
+
+其中 $D_M$、$D_N$、$D_K$ 是有限 tile 集合，$D_{\mathrm{pack}}=\{\texttt{none},\texttt{ab}\}$，$D_{\mathrm{vec}}=\{\mathrm{false},\mathrm{true}\}$。具体集合由实验配置冻结，不属于 Contract。Contract 负责从这些组合中推导条件字段。
+
+条件化构造避免给无关路径附加伪参数。选择 \texttt{pack\_mode=ab} 时，候选增加 \texttt{pack\_a}、\texttt{pack\_b}、panel schema 和 call convention；否则只保留通用 MemRef 约定。任务存在 M/N tail 时，只有声明了 fringe adapter 的候选才增加 \texttt{mn\_tail\_strategy}。K-step 不整除时同理生成 remainder obligation。字段没有被当前路径消费时，不进入 canonical key。
+
+checker 按固定顺序检查 payload、正 tile、静态 extent、Contract 选择、dtype、ISA、MR/NR、K-step、通用 vector lane、packing、panel layout、输出 layout、stride、alignment、tail 能力和 call convention。实现将相关内存接口归并为 11 个固定检查维度，以稳定 reason code 和复杂度统计。检查到不可恢复条件后返回首次失败位置，同时保留已经完成的字段状态。
+
+算法~\ref{alg:chapter4-contract-compile} 给出最终空间生成流程。
+
+\begin{algorithm}[!htbp]
+  \caption{Contract 编译与执行路径生成}
+  \label{alg:chapter4-contract-compile}
+  \begin{algorithmic}[1]
+    \Require 任务上下文 $T$，Contract registry $\mathbb{K}$，通用域 $G_0$，可选软策略 $\mathcal{P}$
+    \Ensure 可执行唯一候选集 $\mathcal{Q}$，可调用 Contract 子集 $\mathcal{C}$
+    \State $\mathbb{K}_T,\ log \gets \mathrm{MatchContracts}(T,\mathbb{K})$
+    \If{$\mathbb{K}_T=\emptyset$}
+      \If{$\mathrm{HasSafeFallback}(T)$}
+        \State $\mathcal{Q}\gets\mathrm{GenerateFallbackSpace}(T,G_0)$
+      \Else
+        \State 保存任务级 reject 诊断，$\mathcal{Q}\gets\emptyset$
+      \EndIf
+      \State $\mathcal{C}\gets\emptyset$
+      \State \Return $\mathcal{Q}$、$\mathcal{C}$ 与 Contract 选择日志
+    \EndIf
+    \State $\mathcal{C}_k\gets\mathrm{SelectContract}(\mathbb{K}_T)$
+    \State $\mathcal{Q}_{tmp}\gets\emptyset$
+    \ForAll{$\theta\in G_0$}
+      \State $p\gets\mathrm{ConstructConditionalFields}(\theta,T,\mathcal{C}_k)$
+      \State $d\gets\mathrm{CompatibilityCheck}(p,T,\mathcal{C}_k)$
+      \If{$d.path=\mathrm{reject}$}
+        \State 保存诊断，不把 $p$ 加入可调空间
+      \Else
+        \State $A\gets\mathrm{ActiveParameters}(p,d.path)$
+        \State $\hat{p}\gets\mathrm{Normalize}(p,A)$
+        \State $key\gets\mathrm{CanonicalKey}(\hat{p},d,\mathcal{C}_k)$
+        \State 生成 obligations、Transform 配方和 provenance
+        \State $\mathcal{Q}_{tmp}\gets\mathcal{Q}_{tmp}\cup\{(\hat{p},key,d)\}$
+      \EndIf
+    \EndFor
+    \State $\mathcal{Q}\gets\mathrm{DeduplicateByKey}(\mathcal{Q}_{tmp})$
+    \State $\mathcal{C}\gets\{q\in\mathcal{Q}\mid \mathrm{path}(q)\in\{\mathrm{direct},\mathrm{adapt}\}\}$
+    \State 可选地用 Performance Profile 对 $\mathcal{C}$ 排序
+    \State \Return $\mathcal{Q}$、$\mathcal{C}$ 与 Contract 选择日志
+  \end{algorithmic}
+\end{algorithm}
+
+\subsection{Direct、Adapt、Fallback 与 Reject}
+
+四类路径描述实现动作，与性能等级无关。direct 候选已经满足 Contract 的调用前提，系统物化声明中的常规 packing 和 wrapper。adapt 仍调用目标微内核，同时执行 Contract 允许的有限补偿。fallback 改用另一条能够保持 GEMM 语义的实现。reject 表示当前系统找不到安全动作。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{四类路径的前提、动作与观测语义}
+  \label{tab:chapter4-paths}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.11\textwidth}
+    >{\raggedright\arraybackslash}p{0.46\textwidth}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{路径} & \textbf{前提与生成动作} &
+    \textbf{运行观测} & \textbf{密度口径} \\
+    \midrule
+    direct &
+    \textbf{前提：}目标、tile、内存接口和 ABI 均匹配，无边界补偿
+    \newline \textbf{动作：}常规 panel packing，调用目标 wrapper &
+    IR、符号和 runtime 均指向目标微内核 &
+    计入 callable \\
+    adapt &
+    \textbf{前提：}核心接口匹配，缺口落在已声明 adapter 能力内
+    \newline \textbf{动作：}padding、临时 C、scatter、fringe 或 K remainder &
+    目标微内核被调用，并记录适配动作 &
+    计入 callable \\
+    fallback &
+    \textbf{前提：}目标微内核不可接纳，但存在正确通用或完整库路径
+    \newline \textbf{动作：}生成通用 Transform 或调用安全 guard &
+    不得把链接存在误记为微内核运行 &
+    不计入 callable \\
+    reject &
+    \textbf{前提：}payload/Transform 非法，或没有任何安全执行路径
+    \newline \textbf{动作：}编译或执行前停止并保存诊断 &
+    无性能样本 &
+    不进入调优空间 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+对要求 packed panel 的微内核，direct 路径照常包含 packing。adapt 的动作需要预先出现在 Contract 的 adapter capabilities 中；未声明的 layout conversion 或 stride 修复不属于 adapt。
+
+fallback 与 reject 的边界由可执行性决定。ISA 不匹配但通用 MLIR lowering 可用时，候选是 fallback；Transform tile 非正或静态 tile 超过冻结策略允许的 extent 时，候选在物化前 reject。统计由此分别反映微内核接口不匹配和程序不可执行。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.84\textwidth]{chapter4_four_path_decision.pdf}
+  \caption{四类执行路径的判定与生成语义}
+  \label{fig:chapter4-four-paths}
+\end{figure}
+
+\subsection{可诊断 Compatibility Checker}
+
+checker 返回的决策记录写为
+
+\begin{equation}
+d(q)=
+\langle
+path,\;phase,\;first\_field,\;reasons,\;actions,\;checks,\;source
+\rangle .
+\label{eq:chapter4-decision-record}
+\end{equation}
+
+\texttt{checks} 保存各维度的 pass、fail、adaptable 或 not-applicable；\texttt{reasons} 使用稳定编码，如 \texttt{PACKING\_REQUIRED}、\texttt{ISA\_FEATURE\_MISSING} 和 \texttt{MN\_TAIL\_ADAPTER}；\texttt{actions} 列出后端必须完成的操作。source 连接 Contract id、Fact id 和输入文件 hash。19 个稳定 reason code 的完整列表见附录~\ref{sec:appendix-reason-codes}。
+
+诊断设计同时服务生成和验证。生成器根据 actions 选择 Transform 配方，测试工具根据 phase 和 first field 构造单字段变异，第五章再比较 predicted path 与 observed path。布尔接口无法区分规则过强、adapter 缺失和 payload 非法，也无法判断某个 fallback 是否符合设计。
+
+checker 不执行 Performance Profile。软评分在路径确定后计算，输入只能是未被 reject 的候选。评分函数无权修改 \texttt{path}，也不能删除 Contract-only 空间中的低分候选。不同排序策略因此可以在同一硬空间上比较。
+
+\section{参数活性分析与候选规范化}
+
+\subsection{路径相关参数活性}
+
+候选参数是否有意义取决于执行路径。设 $\mathcal{O}(q)$ 表示候选物化后的 Transform、LLVM IR、packing 行为和运行路径观测。参数 $\theta_i$ 在上下文 $(T,\mathcal{C}_k,path)$ 中为 active，当且仅当存在只在该参数上不同的两个候选，使
+
+\begin{equation}
+\mathcal{O}(q)\not\equiv\mathcal{O}(q'),
+\qquad
+q_j=q'_j\ \ (j\neq i).
+\label{eq:chapter4-active-parameter}
+\end{equation}
+
+等价关系 $\equiv$ 不要求文本完全相同。符号名、临时 SSA 编号等无语义差异先做归一化。只要参数改变了 tile、packing、callee、fringe 行为或通用向量化结果，就仍然 active。
+
+\texttt{tile\_m}、\texttt{tile\_n} 和 \texttt{tile\_k} 在当前实现中决定宏观循环和 panel 大小，因此属于 active 参数。\texttt{pack\_mode} 决定微内核路径是否可用，也属于 active。通用 \texttt{vectorize} 开关的作用则随路径变化：generic/fallback Transform 消费该开关；direct/adapt 路径在 packing 后调用固定微内核，不再生成对应的通用向量化 IR。
+
+\subsection{不活跃参数规范化}
+
+对 direct/adapt 微内核路径，系统把不活跃的 \texttt{vectorize} 规范为 \texttt{false}：
+
+\begin{equation}
+\mathrm{Norm}_{path}(\theta_i)=
+\begin{cases}
+\mathrm{false}, &
+\theta_i=\texttt{vectorize},\
+path\in\{\mathrm{direct},\mathrm{adapt}\},\\
+\theta_i, & \text{其他情况}.
+\end{cases}
+\label{eq:chapter4-vectorize-normalization}
+\end{equation}
+
+选择 \texttt{false} 只是确定代表元，不表示关闭微内核内部向量指令。目标微内核的 ISA 已由 Contract 固定。generic/fallback 路径继续保留 \texttt{true} 与 \texttt{false}，因为该开关会改变 Transform 和生成代码。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{chapter4_parameter_activity_normalization.pdf}
+  \caption{参数活性与候选规范化示例}
+  \label{fig:chapter4-parameter-normalization}
+\end{figure}
+
+图~\ref{fig:chapter4-parameter-normalization} 采用工作负载 \texttt{sq\_096} 的一个已审计别名对说明规则与复核方式，不表示总体空间缩减比例。该过程只处理路径内别名，与候选性能无关。规范化规则同时声明作用路径、canonical value 和失效条件。若后续 direct/adapt 模板重新消费 \texttt{vectorize}，旧规则立即失效，候选需要重新生成。
+
+\subsection{等价候选去重}
+
+规范键只包含当前路径可观察的字段：
+
+\begin{equation}
+key(q)=H\!\left(
+contract\_id,\;path,\;\theta_{active},\;obligations,\;target\_scope
+\right),
+\label{eq:chapter4-canonical-key}
+\end{equation}
+
+其中 $H$ 是稳定序列化后的散列。direct 与 adapt 必须保留不同 path，M/N fringe 与 K remainder 等义务也进入 key。fallback 的 key 保留通用 \texttt{vectorize}。不同 Contract 即使参数相同也不能合并。
+
+去重分为两层。第一层按规则生成 canonical key，在调优前删除已知别名。第二层对已有编译样本计算归一化 IR hash，核对规则是否与实际代码生成一致。IR hash 是审计证据，不取代活性规则，因为并非每个候选都已有成对二进制。若规则与 IR 证据冲突，系统保留两个候选并标记该参数为 active 或 unresolved。
+
+算法~\ref{alg:chapter4-normalization} 给出路径相关规范化。
+
+\begin{algorithm}[!htbp]
+  \caption{路径相关参数活性分析与候选规范化}
+  \label{alg:chapter4-normalization}
+  \begin{algorithmic}[1]
+    \Require 非 reject 候选集合 $\mathcal{Q}_{raw}$
+    \Ensure 唯一候选集合 $\mathcal{Q}_{uniq}$
+    \State 初始化映射 $M\gets\emptyset$
+    \ForAll{$q\in\mathcal{Q}_{raw}$}
+      \State $A\gets$ 当前 path 的已声明 active 参数
+      \ForAll{$\theta_i\notin A$}
+        \State 用该参数的 canonical value 替换 $\theta_i$
+      \EndFor
+      \State $k\gets\mathrm{CanonicalKey}(q,A)$
+      \If{$k\notin M$}
+        \State $M[k]\gets q$
+      \Else
+        \State 将 $q$ 记录为 $M[k]$ 的 alias，不重复交给调优器
+      \EndIf
+    \EndFor
+    \State 对已有成对编译项比较归一化 IR hash
+    \State 若 hash 不一致，则撤销对应合并并标记活性冲突
+    \State \Return $M$ 的代表元
+  \end{algorithmic}
+\end{algorithm}
+
+规范化发生在空间导出之前，调优器只看到唯一 token，无需让代理模型从测量中学习两个 token 具有相同 objective。调优器若重复返回同一个 token，evaluator 仍会记录重复 callback，但参数别名不会被记为新的 schedule。
+
+\section{分层空间及调优器接口}
+
+最终方法区分 $G_0$、$G_1$、$\mathcal{C}$ 和 $\mathcal{P}$。式~\eqref{eq:chapter4-space-compile} 中的 $\mathcal{Q}$ 对应当前任务实例化并规范化后的 $G_1$；$\mathcal{C}$ 是其中的 direct/adapt 子集：
+
+\begin{equation}
+\mathcal{C}\subseteq G_1\subseteq G_0,
+\qquad
+\mathcal{P}:\mathcal{C}\rightarrow\mathbb{R}\ \text{或采样分布}.
+\label{eq:chapter4-space-hierarchy}
+\end{equation}
+
+$G_0$ 是声明的原始笛卡尔积；$G_1$ 删除 payload、Transform 或基础执行上不可用的候选；$\mathcal{C}$ 只保留通过硬 Contract、已经生成 direct/adapt 路径并完成活性规范化的唯一候选。$\mathcal{P}$ 作用于 $\mathcal{C}$，不构成新的硬空间。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{$G_0/G_1/\mathcal{C}/\mathcal{P}$ 定义与实验策略映射}
+  \label{tab:chapter4-space-map}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.10\textwidth}
+    >{\raggedright\arraybackslash}p{0.29\textwidth}
+    >{\raggedright\arraybackslash}p{0.24\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{对象} & \textbf{定义} & \textbf{是否改变接纳边界} &
+    \textbf{第五章映射} \\
+    \midrule
+    $G_0$ &
+    tile、pack 和通用 vectorize 的原始有限积 &
+    未建立边界 &
+    用于统计原始域，不直接作为正式搜索策略 \\
+    $G_1$ &
+    通过通用语义、Transform 和基础执行检查的规范化空间 &
+    只删除不可执行候选 &
+    B1 Generic 基线 \\
+    $\mathcal{C}$ &
+    通过 Contract、生成 direct/adapt 并去除路径内别名的唯一空间 &
+    是硬接纳边界 &
+    B2 Contract-only \\
+    $\mathcal{P}$ &
+    $\mathcal{C}$ 上的静态来源排序或目标校准排序 &
+    否 &
+    B3 静态来源策略与 B4 校准策略 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+早期系统还构造过 Expert-core 和 Expert+Shell 两个不同成员集合，用于检验把软评分转成结构过滤后的后果。最终方法把它们保留为历史结构消融，不再定义为新的 Contract 空间。第五章分别报告异构空间实验和严格同池排序实验，候选成员变化与搜索顺序变化采用不同口径。
+
+调优器接口采用有限 token lookup。每个 token 唯一对应候选记录、Transform 参数和 evaluator 配方。BaCO 接收 token 域、初始设计和 objective 回调，不需要修改概率模型\cite{Hellsten2023BaCO}。一次评价表示为
+
+\begin{equation}
+token_i
+\xrightarrow{\mathrm{lookup}}q_i
+\xrightarrow{\mathrm{materialize}}\tau_i
+\xrightarrow{\mathrm{compile/run}}y_i
+\xrightarrow{\mathrm{feedback}}\mathcal{M}_{i+1}.
+\label{eq:chapter4-tuner-loop}
+\end{equation}
+
+$y_i$ 只有在编译、执行和正确性门通过后才成为性能 objective。编译失败、数值失败、路径不符和运行异常分别返回状态，不统一伪装成一个很大的运行时间。缓存只能复用同一 canonical token 的既有 objective，不能用别名绕过唯一预算。
+
+Performance Profile 可以生成初始排序、先验均值或采样权重。目标数据校准必须保存 design、validation 和 holdout 边界。调优器选中 token 后才允许读取该候选的目标值，不能在构造候选池或排序审计时偷看 holdout 性能。
+
+\section{Transform 物化与真实微内核路径}
+
+\subsection{候选到参数化 Transform}
+
+候选物化分为结构准备和调用重定向。结构准备 pass 读取 $T_M$、$T_N$、$T_K$、MR、NR 和元素类型，生成宏观循环、A/B panel、direct 与 fringe 占位调用。Transform operation \texttt{transform.buddy.call\_microkernel} 只接受已经准备好的占位符，并把 callee 改为 Contract 指定 wrapper。它不负责推断 packing、选择 path 或构造 ABI 参数。
+
+\noindent\textbf{代码清单 4-1\quad 候选驱动的 Transform 片段}
+\begin{verbatim}
+%prepared = transform.apply_registered_pass
+  "buddy-materialize-blis-packed-matmul"
+  options = "tile-m=24 tile-n=32 tile-k=64 mr=6 nr=16"
+  to %bufferized
+%direct = transform.structured.match ops{["func.call"]}
+  attributes{callee = @buddy_microkernel_placeholder} in %prepared
+transform.buddy.call_microkernel
+  %direct, "buddy_blis_sgemm_6x16" : !transform.any_op
+\end{verbatim}
+
+该接口把调用准备和 callee 改写分成两个步骤。若目标 handle 不是约定占位调用，Transform operation 返回可诊断失败且不修改 payload，宽泛的函数调用匹配因而不会改写无关代码。
+
+Transform 脚本还记录 handle 生命周期和失败传播。完成 bufferization 后，目标 matmul operation 交给 registered pass，pass 生成新的调用对象；后续 match 必须在新 payload handle 中查找占位符。参数绑定和 handle 作用域都是候选配方的一部分，而不是调优器字符串的隐含约定。
+
+\subsection{与 MLIR 上游机制的边界}
+
+当前 MLIR 上游已经提供 registered-pass 执行、结构化匹配、handle 管理和可诊断失败等原语\cite{LLVMProjectTransformDialect,Luecke2025TransformDialect}。其中，pass 执行由 \path{transform.apply_registered_pass} 表达，结构化匹配由 \path{transform.structured.match} 表达。本文使用 registered pass 完成结构准备，再以精确 callee 属性匹配约定占位调用。这些原语能够表达“执行哪个 pass”和“选择哪个 payload operation”，但不生成 Contract 事实、候选合法域、adapter actions 或字段级来源记录。
+
+专用 operation \path{transform.buddy.call_microkernel} 的作用也被刻意限制为重定向已经验证的占位调用。若仅用宽泛的 \path{func.call} 类型匹配改写任意 callee，匹配本身不能证明 A/B 已按目标 panel order 打包、C stride 和 tail 已处理、辅助结构已构造或目标 ABI 一致，容易把无关调用误替换为微内核入口。本文因此不声称现有 MLIR 原语无法表达这些动作，而是把 Contract 驱动的空间生成与审计信息保留为独立层，把包内 materialization 通过 registered pass 和最小专用 operation 接入。
+
+这种拆分也限定了后续维护方式：Schema 与 Contract 编译器不依赖某个 Transform operation 的拼写；结构准备优先复用 registered pass 接口；只有无法由稳定上游原语清楚表达的 callee 约束才留在专用 operation 中。LLVM/MLIR 版本变化由固定 revision、IR 测试和失败传播测试跟踪。当前实现可以作为独立工具或方言扩展使用，但本文不据此判断其已经满足上游合入条件。
+
+\subsection{BLIS \texttt{f32}/\texttt{f64} packing 与 ABI}
+
+BLIS 路径接受 rank-2、元素类型一致、identity layout 的行主序 MemRef。pass 对 N、K、M 三层宏观块循环分别使用 $T_N$、$T_K$、$T_M$。单精度 Contract 设置 MR=6、NR=16，双精度设置 MR=6、NR=8。A panel 的逻辑形状为
+
+\begin{equation}
+\left[\frac{T_M}{MR},\ T_K,\ MR\right],
+\qquad
+B\ \text{panel}=
+\left[\frac{T_N}{NR},\ T_K,\ NR\right].
+\label{eq:chapter4-packed-panels}
+\end{equation}
+
+packing 循环按 Contract 的 panel order 写入连续缓冲。超出 M、N 或 K 有效范围的 A/B 元素填零。新 panel 由 pass 分配并设置显式对齐；微内核 wrapper 接收基址、元素 offset、实际 K、C 基址与 stride。wrapper 构造 $\alpha=1$、$\beta=1$ 和库所需辅助结构，再调用真实 \texttt{bli\_sgemm\_haswell\_asm\_6x16} 或 \texttt{bli\_dgemm\_haswell\_asm\_6x8}。
+
+$\beta=1$ 用于保持分块 K 循环上的累加语义。每个 K panel 都更新已有 C，而不是覆盖前一 panel 的部分和。输入 C 可以非零，因此 reference 检查能够发现错误的 $\beta$、初始化或 scatter 行为。
+
+\subsection{Direct 路径}
+
+当当前 C tile 的有效行数等于 MR、有效列数等于 NR，且其他 Contract 字段均满足时，pass 生成 direct 占位调用。A/B offset 指向对应 packed micro-panel，C offset 指向原输出矩阵中的完整 tile。C row stride 和 column stride从 MemRef 传入 wrapper，微内核直接累加到原 C。
+
+direct 的 observed path 不能由 checker 决定。LLVM IR 中应出现目标 wrapper call，最终可执行文件应包含 wrapper 和目标微内核符号，运行记录还需表明该调用实际执行。只在未执行分支中保留一个符号，不足以证明 replacement。
+
+\subsection{动态 Adapt 与 M/N/K fringe}
+
+动态 shape 使用同一个生成二进制读取运行时 $M$、$K$、$N$。K panel 的实际长度取 $\min(T_K,K-p_c)$。packing 缓冲仍按 $T_K$ 分配，越界位置填零，wrapper 则接收 actual K。K remainder 因此不会把 padding 容量计入计算。
+
+M/N fringe 需要临时 $MR\times NR$ 的 C tile。pass 先把有效 C 元素复制到临时缓冲，无效位置填零；微内核以 $\beta=1$ 更新完整临时 tile；调用结束后只把 $valid_M\times valid_N$ 区域写回原 C。fringe wrapper 与 direct wrapper 调用同一个目标微内核，并增加运行时计数，用于比较解析期预期和 observed path。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.92\textwidth]{chapter4_transform_packing_microkernel_fringe.pdf}
+  \caption{Transform、packing、微内核与 fringe 执行链}
+  \label{fig:chapter4-materialization}
+\end{figure}
+
+图~\ref{fig:chapter4-materialization} 中的 direct 与 adapt 共用 packing 主干，差别只在边界输出处理。红色斜线表示零填充，灰色点纹表示临时 C 的无效区域，绿色块表示有效写回区域；两条路径均记录链接符号、observed path 和数值 reference。adapter 能力是 Contract 的显式字段。当前 pass 没有实现任意 layout conversion 或任意非单位内层 stride，这类任务不能依靠临时缓冲自动归入 adapt。
+
+\subsection{Fallback 路径}
+
+fallback 不经过目标微内核占位调用。x86 候选可以使用通用 \texttt{linalg.matmul} bufferization、tiling 和可选 vectorization，再下降至 LLVM。部署配置也可以把完整 \texttt{bli\_sgemm} 或 \texttt{cblas\_sgemm} 设为 guard。两者都要在候选记录中写明，不能只写 \texttt{fallback=true}。
+
+当任务没有匹配 Contract、缺少 ISA、未请求必要 packing 或接口条件超出 adapter 能力时，checker 选择 fallback。只要 L1 正确性成立，fallback 是合法结果。它在 callable density 中不计为目标微内核可调用候选，但可以保证空间和系统不会因 Contract 空集而失去正确执行。
+
+\noindent\textbf{代码清单 4-2\quad LLVM IR 中的真实微内核调用}
+\begin{verbatim}
+llvm.func @buddy_blis_sgemm_6x16(
+  i64, i64, i64, i64, i64, i64, i64, i64, i64)
+...
+llvm.call @buddy_blis_sgemm_6x16(
+  %k, %a_base, %a_off, %b_base, %b_off,
+  %c_base, %c_off, %rs_c, %cs_c)
+\end{verbatim}
+
+符号出现只是联合证据的一部分。evaluator 还要检查该 call 所在路径、可执行文件符号、运行时路径和数值输出，避免把未执行声明或错误 wrapper 计为成功调用。
+
+\section{OpenBLAS RVV 微内核包与复用边界}
+
+OpenBLAS RV64GCV 包将相同候选记录接口连接到第二库和第二 ISA。Contract 固定 \texttt{f32} $8\times8$、RVV/Zvl128b、OpenBLAS panel schema 和内部 \texttt{sgemm\_kernel} ABI。包内 adapter 生成 A/B panel，处理 $8\times8$ 主块及运行时边界，并把列主序 kernel tile 结果转换到行主序输出。完整 \texttt{cblas\_sgemm} 是部署 guard。
+
+共享核心包括 Contract 语义字段、任务匹配、四类路径、诊断记录、canonical key 和调优 token。OpenBLAS 包没有复用 BLIS 的 packing pass 或 wrapper，也没有证明当前所有候选生成逻辑都能零修改迁移。其 package-local 生成器把 RVV 特有的 panel、内部 ABI 和部署工具封装在包内，再输出统一候选与观测记录。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{共享模块、BLIS 模块与 OpenBLAS RVV 模块边界}
+  \label{tab:chapter4-module-boundary}
+  \begingroup
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}p{0.42\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{模块} & \textbf{共享接口与共享性} &
+    \textbf{包内特化} \\
+    \midrule
+    Contract 与诊断 &
+    \textbf{接口：}Schema、decision、phase、field、provenance
+    \newline \textbf{共享：}三个包共享语义接口 &
+    字段取值、revision 和 reason source \\
+    空间与规范化 &
+    \textbf{接口：}$T,G_0,\mathcal{C}_k\rightarrow$ canonical token
+    \newline \textbf{共享：}BLIS \texttt{f32}/\texttt{f64} 共享核心 &
+    RVV 当前使用 package-local 生成路径 \\
+    Packing &
+    \textbf{接口：}原始 MemRef 到 A/B panel
+    \newline \textbf{共享：}obligation 名称 &
+    panel order、tile 和边界循环 \\
+    ABI adapter &
+    \textbf{接口：}规范化地址参数到真实 callee
+    \newline \textbf{共享：}observed-path 记录 &
+    GEMM\_UKR 与 OpenBLAS 内部 ABI \\
+    部署与 fallback &
+    \textbf{接口：}二进制、manifest、guard
+    \newline \textbf{共享：}完整性和正确性检查 &
+    x86 链接方式、K230 静态 ELF 与库入口 \\
+    \bottomrule
+  \end{tabularx}
+  \endgroup
+\end{table}
+
+表~\ref{tab:chapter4-module-boundary} 将“Schema 可复用”和“后端实现可复用”分开。本文支持同一 BLIS 后端第二 dtype 的核心生成复用，也支持第二库/ISA 使用相同 Contract 语义和验证接口。当前证据不支持任意微内核包零修改接入。
+
+\section{联合验证、复杂度与能力边界}
+
+系统把一次候选执行的验证条件写为
+
+\begin{equation}
+\mathrm{Verified}(q)=
+V_{\mathrm{ref}}\land
+V_{\mathrm{transform}}\land
+V_{\mathrm{llvm}}\land
+V_{\mathrm{link}}\land
+V_{\mathrm{runtime}}\land
+V_{\mathrm{path}} .
+\label{eq:chapter4-joint-verification}
+\end{equation}
+
+$V_{\mathrm{ref}}$ 比较完整矩阵结果；$V_{\mathrm{transform}}$ 检查参数化变换成功；$V_{\mathrm{llvm}}$ 检查目标 call 与数据路径；$V_{\mathrm{link}}$ 检查 wrapper 和微内核符号；$V_{\mathrm{runtime}}$ 检查进程正常完成及 fringe 计数；$V_{\mathrm{path}}$ 比较 predicted 与 observed path。任何单项都不能替代其余证据。
+
+数值 reference 负责发现声明正确但 packed buffer 内容错误、$\beta$ 错误或 scatter 越界。IR 与符号检查负责区分通用 fallback 和真实 replacement。运行时 fringe 计数用于确认动态边界分支实际执行。predicted path 来自 checker，observed path 来自生成物和运行记录，两者始终分栏保存。
+
+设 $N=|G_0|$，$K_c$ 为 registry 中 Contract 数，$D$ 为固定检查维度，$E$ 为非 reject 候选数。任务级选择复杂度为 $O(K_c)$；枚举和检查为 $O(ND)$；使用散列表进行规范化与去重，期望时间为 $O(E)$；软排序为 $O(E\log E)$。物化全部候选记录的内存为 $O(N)$，单次 checker 工作状态为 $O(D)$。当前 $D$ 是常数 11，但显式保留它有助于比较后续 Schema 扩展。
+
+上述复杂度不包含候选编译和硬件测量。对有限空间而言，生成器开销通常小于编译与运行，但该关系仍需按目标机器实测。第五章分别报告生成、checker、编译、测量和调优器成本，不用渐近式替代实际成本。
+
+当前系统存在四项能力边界。其一，checker 的语义域只包含 Task/Candidate descriptor 和当前 Contract Schema；packed buffer 内容、未建模别名与生命周期由其他检查承担。其二，已有路径一致性只是在给定 Contract 和冻结测试域内对相对健全性与有界完备性目标的经验支持，不是对所有输入的形式证明。其三，参数活性依赖当前 path 与 codegen，后端改动后必须重新审计。其四，Contract 不能消除 adapter 工作，packing、ABI 和部署代码仍是微内核包的必要组成部分。
+
+实现范围目前是 rank-2、行主序、单线程 GEMM。BLIS 路径覆盖 \texttt{f32}/\texttt{f64}、动态 M/N/K 和有限 fringe；任意 layout、任意 stride、多线程调度和更多 $\alpha/\beta$ 模式尚未统一。OpenBLAS RVV 已有独立包和物理执行路径，但候选生成仍含包内专用实现。完整库 guard 是部署决策，不应被写成生成候选在性能上已经胜过完整库。
+
+\section{本章小结}
+
+本章把第三章的 Contract 编译为可执行、可诊断且无已知路径内别名的有限候选。任务级匹配选择适用 Contract，候选级约束传播产生 direct、adapt、fallback 或 reject。所有非 reject 候选构成可执行集合 $\mathcal{Q}$，其中 direct/adapt 候选构成可调用子集 $\mathcal{C}$。每个候选保存规范键、变换义务、Transform 配方、诊断和 provenance；Performance Profile 只改变 $\mathcal{C}$ 的候选顺序，不改变接纳边界。
+
+路径相关活性分析识别了通用 \texttt{vectorize} 在 direct/adapt 微内核路径中的不活跃状态，并在调优前选择固定代表元。canonical key 去重与归一化 IR hash 审计共同防止调优器反复评价语义相同的参数别名。$G_0$、$G_1$、$\mathcal{C}$ 和 $\mathcal{P}$ 因而分别对应原始域、通用合法空间、硬 Contract 唯一空间和软排序策略。
+
+系统实现进一步打通了候选 token、Transform、BLIS \texttt{f32}/\texttt{f64} packing、direct/fringe wrapper 和真实微内核调用。OpenBLAS RVV 包复用 Contract 与观测接口，但保留 package-local 生成和 adapter。下一章将围绕接纳诊断、空间内在质量、跨包迁移和完整成本，检验这些方法对象在冻结实验协议下的实际作用。

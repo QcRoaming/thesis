@@ -1,0 +1,192 @@
+{
+  "status": "PASS",
+  "experiment_id": "thesis.cgo_local_extension",
+  "studies": {
+    "f64_contract": {
+      "status": "PASS",
+      "experiment_id": "thesis.cgo_local_extension",
+      "mode": "formal",
+      "dtype": "f64",
+      "contract": "haswell_f64_gemm_6x8",
+      "workloads": 36,
+      "candidate_binaries": 128,
+      "trial_rows": 3132,
+      "aggregate_rows": 1044,
+      "predicted_paths": {
+        "adapt": 2268,
+        "direct": 756
+      },
+      "observed_paths": {
+        "adapt": 2268,
+        "direct": 756
+      },
+      "all_predictions_match": true,
+      "relative_to_blis_gmean": 1.0638304399825744,
+      "claim_boundary": "Single-thread row-major x86-64 results. Target observations in true-online and Optuna trajectories are fresh benchmark subprocesses and are never read from the frozen corpus before selection. The f64 study uses the BLIS Haswell dgemm 6x8 contract. Cross-host evidence is tracked separately."
+    },
+    "true_online": {
+      "status": "PASS",
+      "experiment_id": "thesis.cgo_local_extension",
+      "mode": "formal",
+      "protocol": "select_then_fresh_subprocess_then_update",
+      "workloads": 12,
+      "methods": [
+        "C0_random",
+        "C1_static_blis",
+        "C2_offline_calibrated",
+        "C3_online_calibrated"
+      ],
+      "seeds": [
+        11,
+        29,
+        41,
+        73,
+        101
+      ],
+      "budget": 25,
+      "trace_rows": 6000,
+      "fresh_process_rows": 6000,
+      "objective_cache_hits": 0,
+      "design_cases_for_initial_posterior": 420,
+      "holdout_candidate_outcomes_used_before_selection": 0,
+      "posthoc_pool_best_used_by_policy": false,
+      "claim_boundary": "Single-thread row-major x86-64 results. Target observations in true-online and Optuna trajectories are fresh benchmark subprocesses and are never read from the frozen corpus before selection. The f64 study uses the BLIS Haswell dgemm 6x8 contract. Cross-host evidence is tracked separately."
+    },
+    "optuna_tpe": {
+      "status": "PASS",
+      "experiment_id": "thesis.cgo_local_extension",
+      "mode": "formal",
+      "method": "D1_optuna_tpe",
+      "optuna_version": "4.9.0",
+      "sampler": "TPESampler",
+      "workloads": 12,
+      "seeds": [
+        11,
+        29,
+        41,
+        73,
+        101
+      ],
+      "unique_budget": 25,
+      "unique_measurements": 1500,
+      "callbacks": 2035,
+      "pruned_duplicate_callbacks": 535,
+      "objective_cache_hits": 0,
+      "posthoc_pool_best_used_by_policy": false,
+      "claim_boundary": "Single-thread row-major x86-64 results. Target observations in true-online and Optuna trajectories are fresh benchmark subprocesses and are never read from the frozen corpus before selection. The f64 study uses the BLIS Haswell dgemm 6x8 contract. Cross-host evidence is tracked separately."
+    },
+    "multisource": {
+      "status": "PASS",
+      "experiment_id": "thesis.cgo_local_extension",
+      "mode": "formal",
+      "protocol": "offline_replay_over_real_compiled_candidate_corpus",
+      "hard_contract": "BLIS Haswell f32 6x16 for every executable",
+      "soft_sources": [
+        "BLIS",
+        "OpenBLAS"
+      ],
+      "openblas_runtime_derived_r_fabricated": false,
+      "incompatible_hard_contracts_merged": false,
+      "workloads": 12,
+      "seeds": [
+        11,
+        29,
+        41,
+        73,
+        101
+      ],
+      "budget": 25,
+      "trace_rows": 7500,
+      "claim_boundary": "This ablation compares source-labelled soft rankings on the same BLIS-hard-valid candidate pool. It does not claim that an OpenBLAS 8x4 internal kernel can be called through the BLIS 6x16 packing ABI. Outcomes are offline replays of real compiled runs."
+    }
+  },
+  "paired_bootstrap": [
+    {
+      "comparison": "offline_calibrated_vs_random_budget5",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.1921163575359024,
+      "ci_low": 1.0546061629331496,
+      "ci_high": 1.342713087536848,
+      "left_win_rate": 0.7333333333333333,
+      "tie_rate": 0.0
+    },
+    {
+      "comparison": "online_calibrated_vs_random_budget5",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.1549053032373926,
+      "ci_low": 1.0416637329144331,
+      "ci_high": 1.2770396687324406,
+      "left_win_rate": 0.8,
+      "tie_rate": 0.0
+    },
+    {
+      "comparison": "online_calibrated_vs_optuna_tpe_budget5",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.0376987028219196,
+      "ci_low": 0.9200651601172681,
+      "ci_high": 1.1590070112281394,
+      "left_win_rate": 0.6666666666666666,
+      "tie_rate": 0.0
+    },
+    {
+      "comparison": "online_calibrated_vs_random_budget25",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.0181249246972777,
+      "ci_low": 0.976661348476644,
+      "ci_high": 1.0681694618870619,
+      "left_win_rate": 0.55,
+      "tie_rate": 0.0
+    },
+    {
+      "comparison": "online_calibrated_vs_optuna_tpe_budget25",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 0.9727545694060192,
+      "ci_low": 0.935682638579424,
+      "ci_high": 1.0062039770605429,
+      "left_win_rate": 0.4666666666666667,
+      "tie_rate": 0.0
+    },
+    {
+      "comparison": "blis_only_vs_naive_merge_budget5",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.0633040566045333,
+      "ci_low": 1.0293460577408629,
+      "ci_high": 1.1031941576275093,
+      "left_win_rate": 0.16666666666666666,
+      "tie_rate": 0.8333333333333334
+    },
+    {
+      "comparison": "calibrated_source_prior_vs_naive_merge_budget5",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.0668310779446892,
+      "ci_low": 1.018225935603744,
+      "ci_high": 1.1248664128053503,
+      "left_win_rate": 0.3333333333333333,
+      "tie_rate": 0.5
+    },
+    {
+      "comparison": "calibrated_source_prior_vs_blis_only_budget5",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.0033170392967545,
+      "ci_low": 0.986328183604294,
+      "ci_high": 1.02100477586771,
+      "left_win_rate": 0.3333333333333333,
+      "tie_rate": 0.5
+    },
+    {
+      "comparison": "calibrated_source_prior_vs_naive_merge_budget25",
+      "pairs": 60,
+      "left_speedup_over_right_gmean": 1.0,
+      "ci_low": 1.0,
+      "ci_high": 1.0,
+      "left_win_rate": 0.0,
+      "tie_rate": 1.0
+    }
+  ],
+  "evidence_boundaries": [
+    "Compatibility transfer is tested on f32 6x16 and f64 6x8 BLIS Haswell contracts.",
+    "True-online and Optuna target objectives are fresh subprocess measurements.",
+    "Multi-source ranking is an offline replay and never merges incompatible kernel ABIs.",
+    "Cross-host generalization remains pending until a 14900K/KF archive is imported."
+  ]
+}

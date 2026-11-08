@@ -1,0 +1,207 @@
+{
+  "experiment_id": "thesis.chapter5_blis_adapter",
+  "baseline_definition": "Dynamic linalg.matmul is one-shot bufferized and lowered to scalar loops without explicit tiling or vectorization.",
+  "dynamic_kernel": {
+    "input_types": [
+      "tensor<?x?xf32>",
+      "tensor<?x?xf32>",
+      "tensor<?x?xf32>"
+    ],
+    "compile_count": 2,
+    "one_binary_per_variant_for_all_shapes": true,
+    "compiled_variants": [
+      {
+        "variant": "dynamic_fallback",
+        "symbol": "chapter5_dynamic_fallback",
+        "executable": "/buddy-mlir/jlq/thesis/experiments/chapter5_blis_adapter/build/dynamic_multishape/dynamic_fallback/benchmark",
+        "executable_sha256": "4eada6515b412df187c83c71f716824f7d6827026c49de2dfce586510f0802e6",
+        "llvm_ir_bytes": 6446,
+        "has_dynamic_dims": false,
+        "has_temporary_c": false,
+        "has_direct_call": false,
+        "has_fringe_call": false,
+        "has_blis_kernel_symbol": false
+      },
+      {
+        "variant": "dynamic_blis",
+        "symbol": "chapter5_dynamic_blis",
+        "executable": "/buddy-mlir/jlq/thesis/experiments/chapter5_blis_adapter/build/dynamic_multishape/dynamic_blis/benchmark",
+        "executable_sha256": "8cbcc7475a0ee436e573e7e9b2b487050d0cc90771299351668db36133f896a9",
+        "llvm_ir_bytes": 18330,
+        "has_dynamic_dims": true,
+        "has_temporary_c": true,
+        "has_direct_call": true,
+        "has_fringe_call": true,
+        "has_blis_kernel_symbol": true
+      }
+    ]
+  },
+  "measurement": {
+    "warmups": 2,
+    "repeats": 9,
+    "inner_iters": 1,
+    "trials": 3,
+    "cpu_affinity": 0,
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 20260714
+  },
+  "shape_summaries": [
+    {
+      "shape_id": "aligned_small_48x64x64",
+      "m": 48,
+      "k": 64,
+      "n": 64,
+      "expected_path": "direct",
+      "fallback_median_ms": 0.15428,
+      "blis_median_ms": 0.009036,
+      "fallback_median_gflops": 2.549,
+      "blis_median_gflops": 43.517,
+      "speedup": 17.07392651615759,
+      "blis_trial_median_stddev_ms": 0.0018200705725023106,
+      "max_abs_diff": 3.6e-07,
+      "fringe_calls_per_trial": [
+        0
+      ],
+      "expected_fringe_calls_per_trial": [
+        0
+      ]
+    },
+    {
+      "shape_id": "aligned_medium_96x128x128",
+      "m": 96,
+      "k": 128,
+      "n": 128,
+      "expected_path": "direct",
+      "fallback_median_ms": 1.568194,
+      "blis_median_ms": 0.074477,
+      "fallback_median_gflops": 2.006,
+      "blis_median_gflops": 42.238,
+      "speedup": 21.056084428749816,
+      "blis_trial_median_stddev_ms": 0.013092785655551768,
+      "max_abs_diff": 7.2e-07,
+      "fringe_calls_per_trial": [
+        0
+      ],
+      "expected_fringe_calls_per_trial": [
+        0
+      ]
+    },
+    {
+      "shape_id": "aligned_anchor_192x256x256",
+      "m": 192,
+      "k": 256,
+      "n": 256,
+      "expected_path": "direct",
+      "fallback_median_ms": 17.159672,
+      "blis_median_ms": 0.584018,
+      "fallback_median_gflops": 1.467,
+      "blis_median_gflops": 43.091,
+      "speedup": 29.382094387501756,
+      "blis_trial_median_stddev_ms": 0.013457048966578405,
+      "max_abs_diff": 1.37e-06,
+      "fringe_calls_per_trial": [
+        0
+      ],
+      "expected_fringe_calls_per_trial": [
+        0
+      ]
+    },
+    {
+      "shape_id": "k_tail_48x67x64",
+      "m": 48,
+      "k": 67,
+      "n": 64,
+      "expected_path": "adapt",
+      "fallback_median_ms": 0.220195,
+      "blis_median_ms": 0.011034,
+      "fallback_median_gflops": 1.869,
+      "blis_median_gflops": 37.307,
+      "speedup": 19.956044951966646,
+      "blis_trial_median_stddev_ms": 0.0014156629385399463,
+      "max_abs_diff": 3.6e-07,
+      "fringe_calls_per_trial": [
+        0
+      ],
+      "expected_fringe_calls_per_trial": [
+        0
+      ]
+    },
+    {
+      "shape_id": "mn_tail_50x64x70",
+      "m": 50,
+      "k": 64,
+      "n": 70,
+      "expected_path": "adapt",
+      "fallback_median_ms": 0.196797,
+      "blis_median_ms": 0.015409,
+      "fallback_median_gflops": 2.276,
+      "blis_median_gflops": 29.074,
+      "speedup": 12.77156207411253,
+      "blis_trial_median_stddev_ms": 0.00026917198137167925,
+      "max_abs_diff": 3.6e-07,
+      "fringe_calls_per_trial": [
+        143
+      ],
+      "expected_fringe_calls_per_trial": [
+        143
+      ]
+    },
+    {
+      "shape_id": "all_tail_190x250x250",
+      "m": 190,
+      "k": 250,
+      "n": 250,
+      "expected_path": "adapt",
+      "fallback_median_ms": 12.203317,
+      "blis_median_ms": 0.630816,
+      "fallback_median_gflops": 1.946,
+      "blis_median_gflops": 37.65,
+      "speedup": 19.345287690863895,
+      "blis_trial_median_stddev_ms": 0.10395770005899298,
+      "max_abs_diff": 1.31e-06,
+      "fringe_calls_per_trial": [
+        2068
+      ],
+      "expected_fringe_calls_per_trial": [
+        2068
+      ]
+    },
+    {
+      "shape_id": "micro_fringe_19x65x17",
+      "m": 19,
+      "k": 65,
+      "n": 17,
+      "expected_path": "adapt",
+      "fallback_median_ms": 0.016455,
+      "blis_median_ms": 0.003329,
+      "fallback_median_gflops": 2.552,
+      "blis_median_gflops": 12.613,
+      "speedup": 4.942925803544608,
+      "blis_trial_median_stddev_ms": 0.0,
+      "max_abs_diff": 2.7e-07,
+      "fringe_calls_per_trial": [
+        110
+      ],
+      "expected_fringe_calls_per_trial": [
+        110
+      ]
+    }
+  ],
+  "overall": {
+    "shape_count": 7,
+    "direct_shape_count": 3,
+    "adapt_shape_count": 4,
+    "trial_row_count": 42,
+    "geometric_mean_speedup": 15.904664294064439,
+    "geometric_mean_speedup_95ci_bootstrap": [
+      10.24950564467854,
+      22.03581482942689
+    ],
+    "direct_geometric_mean_speedup": 21.94141290412519,
+    "adapt_geometric_mean_speedup": 12.494516187767895,
+    "median_speedup": 19.345287690863895,
+    "all_correct": true,
+    "fringe_counts_match": true
+  },
+  "claim_boundary": "One x86-64 AVX2/FMA host, f32 rank-2 row-major MemRefs, one dynamic kernel binary per variant, fixed 6x16 BLIS Haswell microkernel, and a scalar-loop dynamic fallback. The bootstrap interval resamples shapes, not hosts."
+}

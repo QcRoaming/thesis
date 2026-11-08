@@ -1,0 +1,182 @@
+schema_version: 2
+generated_by: scripts/extract_blis_facts.py
+source:
+  repository: /buddy-mlir/jlq/thesis/blis/blis
+  revision: 36df51a81cc732eeadbf2e6732941dd5400db47d
+facts:
+- id: blis.haswell.gemm.f32
+  library: BLIS
+  operation: gemm
+  dtype: f32
+  target:
+    architecture: haswell
+    machine: x86_64
+    required_features:
+    - avx2
+    - fma
+  microkernel:
+    symbol: bli_sgemm_haswell_asm_6x16
+    mr: 6
+    nr: 16
+    row_preferred: true
+  cache_blocking:
+    mc: 168
+    kc: 256
+    nc: 4080
+  packing:
+    enabled: true
+    kernel: bli_spackm_haswell_asm_6x16
+    a_panel: 6xkc
+    b_panel: kcx16
+  vectorization:
+    isa:
+    - avx2
+    - fma
+    vector_bits: 256
+    lanes: 8
+    compiler_flags: -mavx2 -mfma -mfpmath=sse -march=haswell
+  constraints:
+    blocksize_multiples:
+      nc: nr
+      kc: kr
+      mc: mr
+      nr: nr
+      mr: mr
+    mr_nr_verified_against_kernel: true
+  evidence:
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 54
+    kind: kernel_registration
+  - file: kernels/haswell/3/bli_gemm_haswell_asm_d6x8.c
+    line: 80
+    kind: kernel_definition
+  - file: kernels/haswell/3/bli_gemm_haswell_asm_d6x8.c
+    line: 104
+    kind: kernel_contract_check
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 149
+    kind: storage_preference
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 74
+    kind: pack_kernel_registration
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 192
+    kind: mr_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 193
+    kind: nr_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 196
+    kind: mc_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 197
+    kind: kc_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 206
+    kind: nc_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 235
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 236
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 237
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 238
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 239
+    kind: blocksize_multiple
+  - file: config/haswell/make_defs.mk
+    line: 68
+    kind: compiler_isa_flags
+- id: blis.haswell.gemm.f64
+  library: BLIS
+  operation: gemm
+  dtype: f64
+  target:
+    architecture: haswell
+    machine: x86_64
+    required_features:
+    - avx2
+    - fma
+  microkernel:
+    symbol: bli_dgemm_haswell_asm_6x8
+    mr: 6
+    nr: 8
+    row_preferred: true
+  cache_blocking:
+    mc: 72
+    kc: 256
+    nc: 4080
+  packing:
+    enabled: true
+    kernel: bli_dpackm_haswell_asm_6x8
+    a_panel: 6xkc
+    b_panel: kcx8
+  vectorization:
+    isa:
+    - avx2
+    - fma
+    vector_bits: 256
+    lanes: 4
+    compiler_flags: -mavx2 -mfma -mfpmath=sse -march=haswell
+  constraints:
+    blocksize_multiples:
+      nc: nr
+      kc: kr
+      mc: mr
+      nr: nr
+      mr: mr
+    mr_nr_verified_against_kernel: true
+  evidence:
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 55
+    kind: kernel_registration
+  - file: kernels/haswell/3/bli_gemm_haswell_asm_d6x8.c
+    line: 939
+    kind: kernel_definition
+  - file: kernels/haswell/3/bli_gemm_haswell_asm_d6x8.c
+    line: 970
+    kind: kernel_contract_check
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 150
+    kind: storage_preference
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 75
+    kind: pack_kernel_registration
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 192
+    kind: mr_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 193
+    kind: nr_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 196
+    kind: mc_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 197
+    kind: kc_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 206
+    kind: nc_value
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 235
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 236
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 237
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 238
+    kind: blocksize_multiple
+  - file: config/haswell/bli_cntx_init_haswell.c
+    line: 239
+    kind: blocksize_multiple
+  - file: config/haswell/make_defs.mk
+    line: 68
+    kind: compiler_isa_flags

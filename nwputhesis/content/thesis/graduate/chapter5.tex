@@ -1,0 +1,563 @@
+% !TeX root = ../../../graduate.tex
+%% 第五章
+
+\chapter{实验评估与分析}
+\chaptermark{实验评估与分析}
+\label{chap:evaluation}
+
+第三章将外部微内核的调用前提整理为可核验的 Contract，第四章据此生成规范化候选，并把候选接入 Transform、packing、外部调用和数值检查。本章检验这套方法在实际系统中的作用。评价重点不是生成代码能否普遍超过成熟 GEMM 库，而是四个更具体的问题：Contract 能否可靠界定接纳边界；硬约束是否改善搜索空间本身；哪些表示或实现可以迁移；在完整库已经可用时，启动搜索是否具有经济性。
+
+实验覆盖 BLIS Haswell \texttt{f32} $6\times16$、BLIS Haswell \texttt{f64} $6\times8$ 和 OpenBLAS RV64GCV \texttt{f32} $8\times8$ 三个微内核包。数据来自 i7-10750H、i9-14900 和物理 K230。静态分类、离线重放与目标机实测分别报告，避免把已有语料上的搜索轨迹写成新的编译或硬件测量。对于性能比较，完整 BLIS 或 OpenBLAS 是部署边界；标量回退只用于说明微内核执行链是否生效。
+
+\section{实验问题、环境与统计协议}
+
+\subsection{研究问题与证据安排}
+
+本章按表~\ref{tab:chapter5-rqs} 的四个研究问题组织。RQ1 关注安全性和诊断，不以性能作为判据。RQ2 先分析候选空间的内在结构，再比较固定预算搜索。RQ3 将迁移拆成表示、生成器、合法执行和性能排序四层。RQ4 把完整库性能、搜索成本和部署调用量放到同一价值模型中。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{实验研究问题、主要指标与证据来源}
+  \label{tab:chapter5-rqs}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.10\textwidth}
+    >{\raggedright\arraybackslash}p{0.39\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{问题} & \textbf{评价内容} & \textbf{主要指标与证据} \\
+    \midrule
+    RQ1 &
+    Contract 是否正确接受 direct/adapt，拒绝或安全降级危险不匹配，并给出字段级诊断 &
+    独立 gold case、Mutation Score、false accept/reject、预测路径与观测路径一致率、故障注入 \\
+    RQ2 &
+    Contract 是否减少无关候选和语义重复，并在固定预算内形成可搜索的真实执行空间 &
+    候选数、callable density、IR duplicate ratio、$D_{90}$、time-to-90\%、best-at-budget \\
+    RQ3 &
+    Contract 表示、核心生成器、合法执行和性能排序分别能迁移到何种程度 &
+    Schema 覆盖、核心修改审计、跨 dtype/库/ISA/主机正确性、严格同池配对结果 \\
+    RQ4 &
+    生成候选相对完整库是否有收益，收益能否覆盖校准、编译、测量和搜索成本 &
+    完整库性能比、Qwen 调用覆盖、$V(H)$、点估计与 LCB95 break-even、guarded decision \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+这四个问题使用的证据强度并不相同。静态分类可以覆盖整个有限域，但不能证明候选已经编译或运行。manifest replay 只能说明记录中的既有二进制曾成功生成。离线 BaCO replay 的目标值来自冻结实测语料，能够比较搜索轨迹，却没有产生新的目标测量。物理机结果直接支持受测配置上的正确性和性能，仍不能外推到未覆盖的线程数、布局或设备。后文在每组结果中保留这些边界。
+
+\subsection{设备、软件与测量范围}
+
+表~\ref{tab:chapter5-platforms} 列出主要平台。开发主机承担 \texttt{f32}/\texttt{f64} 候选构建、正式单机评估和消融；i9 用于跨主机复制及 Transformer 精确形状验证；K230 用于独立 OpenBLAS/RVV 包和 MLIR wrapper 的物理执行。全部主结果均为单线程。x86 实验固定 BLIS 与 OpenBLAS revision，短标识分别为 \texttt{36df51a} 和 \texttt{b338322}；完整 revision 已在第三章及 provenance 文件中记录。跨主机包固定 Buddy revision \texttt{d7bb40c}、LLVM revision \texttt{09b849a} 和 mimalloc revision \texttt{81a7711}。正式 \texttt{f32} 语料使用 LLVM/Clang 21.0.0git 与 BaCO 3.0.0。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{实验平台、用途与测量约束}
+  \label{tab:chapter5-platforms}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.17\textwidth}
+    >{\raggedright\arraybackslash}p{0.38\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{平台} & \textbf{硬件与环境} & \textbf{用途和协议边界} \\
+    \midrule
+    i7-10750H &
+    6 核 12 线程，AVX2/FMA，WSL2；正式实验绑 CPU 0，单线程 &
+    36 个 \texttt{f32} workload、BLIS \texttt{f32}/\texttt{f64}、固定预算与消融。候选通常预热 2 次、计时 7 次，独立进程重复 3 次 \\
+    i9-14900 &
+    Ubuntu 20.04 原生 Linux，绑 CPU 0，单线程 &
+    \texttt{f64} 跨主机复制和 10 个 Transformer-derived \texttt{f32} exact-shape。外部验证每进程预热 1 次、计时 3 次，独立进程重复 3 次 \\
+    K230/C908 &
+    RT-Smart，RV64GCV，OpenBLAS 目标 \texttt{RISCV64\_ZVL128B}；K230 SDK revision \texttt{7e302f7} &
+    物理 RVV 候选、OpenBLAS 完整路径、direct/adapt 和 MLIR wrapper closure。结论只适用于该开发板与冻结工具链 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+计时范围以各实验 manifest 为准。候选运行时间不包含输入生成和 reference 计算；候选编译、测量与模型拟合成本在经济性分析中另行计入。i7/WSL2 是课题初期的开发环境，承担编译链调试并形成既有正式候选语料；i9 原生 Linux 在后续阶段用于跨主机复制和外部精确形状验证。二者不是从同一机器总体随机抽取的两个样本，区间也不在机器层级重采样。i9 的 \texttt{perf stat} 因权限不可用，外部主结果使用 wall-clock kernel time。WSL2 exact-shape 的稳定性资格审计未通过，因此 Qwen 加权结论只使用原生 i9 和物理 K230 数据；后续新增正式计时应统一迁移到原生 Linux，而不是事后把两套环境合并为同一分布。
+
+\subsection{工作负载、对照和冻结协议}
+
+正式 \texttt{f32} 评估包含 36 个预声明的行主序 GEMM 工作负载，按 15 个 design、9 个 validation 和 12 个 holdout 划分，覆盖方阵、M/N 窄矩阵、小 K、边界和模型矩形形状。其中 8 个调优工作负载用于 B1 至 B4 的固定预算曲线，每种方法、每个工作负载使用 5 个种子和 25 次回调预算。每个工作负载的冻结实测候选池最多为 28 个，完整形状与划分见表~\ref{tab:appendix-f32-workloads}。另有 36 个 \texttt{f64} 工作负载用于第二个 BLIS Contract 和跨主机实验。
+
+空间符号沿用第四章。$G_0$ 是每个工作负载含 2,600 点的原始笛卡尔积；$G_1$ 是通过通用可执行性条件的空间；$\mathcal{C}$ 是 direct/adapt 的硬 Contract 可调用空间。正式调优方法记为 B1 至 B5：
+
+\begin{itemize}
+  \item B1 在通用可执行空间上运行未修改的 BaCO；
+  \item B2 只保留硬 Contract 候选，不使用静态性能排序；
+  \item B3 在 Contract 空间上加入静态 Expert-core 排序；
+  \item B4 在 B3 基础上加入确定性的 exploration shell；
+  \item B5 调用完整 \texttt{bli\_sgemm}，作为部署性能参考。
+\end{itemize}
+
+B0 包含标量 dynamic MLIR 和优化 dynamic MLIR 两个编译器基线。后者使用 $24\times32\times64$ 分块和 \texttt{vector<8xf32>} FMA。B1 至 B4 的 objective 均来自真实编译并运行过的候选；搜索阶段读取冻结语料，避免因不同 seed 反复编译同一候选。规范化 $\mathcal{C}$ 池的补充实验同样只读取冻结 objective，但其候选折叠与回填协议在查看结果前固定，且不使用性能值决定池成员。
+
+外部验证使用 10 个固定形状工作负载，具体形状见表~\ref{tab:appendix-external-workloads}。其中 8 个来自 Qwen2.5-0.5B 的 decode 和 prefill 核心投影，另有 2 个相邻边界压力用例。模型跟踪归并为 8 个规范工作负载，用于调用覆盖和按频次加权的分析。该跟踪覆盖 192/192 个核心投影调用，不包含 \texttt{lm\_head}，也不代表完整模型端到端执行。
+
+\subsection{指标与统计方法}
+
+性能比沿用第二章的吞吐率口径。原始观测为运行时间时，吞吐率与时间成反比，因此候选相对基准的性能比等价于 $t_b/t_q$；比值大于 1 表示候选更快。跨 workload 聚合采用几何均值。固定预算结果的 95\% 区间以 workload 或 workload-seed 为重采样单位；严格同池实验采用 workload-cluster bootstrap，使同一 workload 的 5 个 seed 保持在同一 cluster 内。区间不重采样机器，不能解释为跨主机置信范围。
+
+$D_{90}$ 与 $T_{90}$ 分别按式~\eqref{eq:chapter2-d90} 和式~\eqref{eq:chapter2-t90} 计算。预算 25 内未达到阈值的轨迹记为 26，并标为右删失。正文中的 callback 数、唯一候选查询数、实际编译数和实际测量数分别记录；只有唯一候选查询进入 $T_{90}$。$D_{90}$ 是固定候选池的静态属性，$T_{90}$ 才随搜索顺序变化，两者不必同方向变化。
+
+正确性检查沿用各 package 的冻结容差，并同时检查 predicted/observed path、Transform/LLVM IR、链接符号和 fringe 计数。性能区间使用 10000 或 20000 次 bootstrap，具体次数随实验协议冻结。只有区间整体位于 1 的一侧时，本文才称配对结果在该协议下有统计支持。
+
+\section{RQ1：Contract 接纳边界与诊断有效性}
+
+\subsection{独立 gold case 与危险变异}
+
+为避免用生成器自身的判定逻辑验证 checker，接纳边界补充实验（记为 Exp-E1，以区别第三章的证据等级 E1 至 E5）为三个微内核包分别手工构造 1 个 direct、1 个 adapt 和 8 个危险单字段变异。变异覆盖 dtype、ISA、微内核分块、stride、packing schema、tail 或 $\beta$、ABI 和源码版本，共 30 个用例，其中 24 个为负例。独立 oracle 预先给出期望路径、首次拒绝阶段和诊断字段。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{三个微内核包的独立 Contract 变异结果}
+  \label{tab:chapter5-mutation}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.30\textwidth}
+    >{\centering\arraybackslash}p{0.14\textwidth}
+    >{\centering\arraybackslash}p{0.16\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{Contract package} & \textbf{正例} & \textbf{危险变异} & \textbf{结果} \\
+    \midrule
+    BLIS Haswell \texttt{f32} $6\times16$ & 2/2 & 8/8 & 路径、阶段和字段均与 oracle 一致 \\
+    BLIS Haswell \texttt{f64} $6\times8$ & 2/2 & 8/8 & 路径、阶段和字段均与 oracle 一致 \\
+    OpenBLAS RV64GCV \texttt{f32} $8\times8$ & 2/2 & 8/8 & 路径、阶段和字段均与 oracle 一致 \\
+    \midrule
+    合计 & 6/6 & 24/24 & false accept=0，false reject=0 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+24 个危险变异全部被 reject 或安全降级为 fallback，Mutation Score 为 1.000。path、phase 和 diagnostic field accuracy 均为 1.000。图~\ref{fig:chapter5-mutation} 的左侧矩阵显示相同语义字段在三个 package 上得到一致的安全动作；不同字段采用 reject 还是 fallback，取决于系统是否仍有正确的通用执行路径。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.96\textwidth]{chapter5_contract_mutation_fault_matrix.pdf}
+  \caption{Contract 危险变异与隔离故障检测结果}
+  \label{fig:chapter5-mutation}
+\end{figure}
+
+\subsection{静态 checker 的能力边界}
+
+静态 checker 验证 descriptor 与 Contract 是否一致，不能观察 packed buffer 的真实内容。为检验这一边界，实验在隔离进程中分别打乱 B panel 顺序，并破坏 $\beta$/tail 累加。两个 case 都保留了内部一致的 descriptor，因此不能指望静态 checker 报错；reference GEMM 分别观测到 5.2063 和 0.7581 的最大绝对误差，2/2 故障均被运行时正确性门检测。危险 ISA 和真实 ABI 破坏没有在目标进程中执行，以免把安全测试变成未定义行为。
+
+这一结果说明 Contract 是调用前的接纳检查，不替代数值 reference、内存保护或运行时异常处理。将这两类机制分开后，安全结论更明确：checker 对声明字段负责，运行时验证对内容损坏和实现错误负责。
+
+\subsection{预测路径与真实执行路径}
+
+正式 \texttt{f32} 语料中共有 1,256 个已测候选与工作负载组合。预测与观测的混淆矩阵只有对角项，包括 416 个 direct、440 个 adapt 和 400 个 fallback，一致率为 1.000。这里的实际路径来自 LLVM IR、最终链接符号和运行时计数，不是对预测路径的复制。
+
+真实 adapter 实验进一步覆盖 7 个动态形状，3 个为 direct，4 个包含 M/N/K fringe 并进入 adapt，所有独立 trial 均通过完整 reference。最小集成闭环还预声明了 direct、adapt 和 feature-mismatch fallback 三个 case，观测时间分别为 0.441 ms、0.410 ms 和 14.875 ms，三者的路径和数值结果均符合预期。这三个时间只用于证明 evaluator 确实触发不同路径，不构成正式收敛比较。
+
+RQ1 的答案是肯定的，但范围需要保留。当前证据支持三个冻结 package、既有 adapter 能力和受测字段；它不证明 Contract 能发现 descriptor 之外的内存损坏，也不覆盖任意 ABI、任意 ISA 或未知库版本。
+
+\section{RQ2：硬 Contract 空间的内在质量与搜索结果}
+
+\subsection{全域分类、可调用密度和 checker 开销}
+
+空间质量补充实验（Exp-E2）对 36 个工作负载的 2,600 点原始域逐项分类，共执行 93,600 次静态判定。表~\ref{tab:chapter5-space-quality} 给出三个空间的平均结果。$G_0$ 保留全部 2,600 个组合，其中 direct/adapt 只占 0.080。$G_1$ 去除通用不可执行候选后平均保留 951.9 个，callable density 增至 0.105。$\mathcal{C}$ 平均保留 104.4 个候选，全部为 direct/adapt。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{$G_0$、$G_1$ 与 $\mathcal{C}$ 的空间内在质量}
+  \label{tab:chapter5-space-quality}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.10\textwidth}
+    >{\centering\arraybackslash}p{0.17\textwidth}
+    >{\centering\arraybackslash}p{0.15\textwidth}
+    >{\centering\arraybackslash}p{0.17\textwidth}
+    >{\centering\arraybackslash}p{0.18\textwidth}
+    >{\centering\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{空间} & \textbf{平均候选数} & \textbf{缩减率} & \textbf{可调用密度} & \textbf{规范化 IR 重复率} & \textbf{首次可调用中位数} \\
+    \midrule
+    $G_0$ & 2600.0 & 0 & 0.080 & 0.500 & 10.0 \\
+    $G_1$ & 951.9 & 0.634 & 0.105 & 0.342 & 7.0 \\
+    $\mathcal{C}$ & 104.4 & 0.960 & 1.000 & 0 & 1.0 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+若随机打乱候选顺序，36 个 workload 的中位首次可调用位置从 $G_0$ 的 10 次、$G_1$ 的 7 次降为 $\mathcal{C}$ 的 1 次。图~\ref{fig:chapter5-space-quality} 同时给出候选规模、callable density 和 IR 重复率。结果支持“Contract 改变空间结构”的主张，但不能仅凭密度推导候选性能更高。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{chapter5_space_intrinsic_quality.pdf}
+  \caption{原始域、通用合法域与硬 Contract 域的内在质量}
+  \label{fig:chapter5-space-quality}
+\end{figure}
+
+checker 单候选耗时的中位数为 1.257 $\mu$s，p95 为 8.69 $\mu$s。该开销远小于候选编译和独立进程测量，但其作用是提前判定接口边界，不应表述为端到端调优加速。
+
+\subsection{参数活性、canonical key 与编译证据}
+
+第四章指出，direct/adapt 微内核路径并不消费候选中的 \texttt{vectorize} 标志。规范化前，$\mathcal{C}$ 平均含 208.7 个候选，成对别名导致 IR duplicate ratio 为 0.500。将该标志固定为 false 后，平均候选数降至 104.4，重复率降为 0。$G_1$ 中只有 direct/adapt 子集应用同一规则，因此其候选数由 1056.2 降为 951.9，重复率由 0.405 降为 0.342。
+
+等价性审计在 64 个同时存在两个已编译别名的实测组上比较去除符号差异后的 canonical IR，64/64 组一致。最终规范化 replay 使用的 224 个 schedule 中，166 个具有成对 IR 证据；其余 58 个缺少已编译的 \texttt{vectorize=false} 对应项，只依赖已经审计的参数活性规则。因而本文主张的是“规则支持的规范化唯一候选”，不将 224 个 schedule 全部写成逐项双编译等价。
+
+编译 replay 从 8 个代表 workload、3 个空间中各抽取 32 条记录，共 768 条，均能映射到既有成功 manifest，失败数为 0。该结果证明现有记录可追溯，不代表本实验新编译了 768 个候选，也不外推到未编译的 $G_0$ 项。
+
+图~\ref{fig:chapter5-normalization-distribution} 展开 36 个 workload 的配对变化。所有工作负载的规范化后候选数都恰为规范化前的一半，这是当前 direct/adapt 路径中 \texttt{vectorize=true/false} 成对别名被折叠的结果，不是从均值推断出的统计规律。该图只描述空间规模，不表示规范化带来性能提升。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.96\textwidth]{chapter5_normalization_workload_distribution.pdf}
+  \caption{36 个工作负载上 Contract 候选规范化前后的配对分布}
+  \label{fig:chapter5-normalization-distribution}
+\end{figure}
+
+\subsection{完整 Contract 空间、实测语料与 28 点重放池}
+
+表~\ref{tab:chapter5-pool-construction} 区分“静态空间”和“有性能值的重放池”。2,600、208.7 和 104.4 都是 36 个 workload 上的静态候选统计；28 则是 8 个调优 workload 上从既有实测语料构造的固定子池，二者的样本范围和用途不同。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{候选空间、实测语料与重放池的构造关系}
+  \label{tab:chapter5-pool-construction}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.19\textwidth}
+    >{\raggedright\arraybackslash}p{0.22\textwidth}
+    >{\raggedright\arraybackslash}p{0.34\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{阶段} & \textbf{范围与规模} & \textbf{成员规则} & \textbf{是否读取性能} \\
+    \midrule
+    原始域 $G_0$ & 36 个 workload，各 2,600 点 & tile、packing 与 vectorize 的笛卡尔积 & 否 \\
+    规范化前 $\mathcal{C}$ & 36 个 workload，平均 208.7 点 & 仅保留 Contract direct/adapt；仍含不活跃 vectorize 别名 & 否 \\
+    规范化 $\mathcal{C}$ & 36 个 workload，平均 104.4 点 & 按路径语义键固定 vectorize=false 代表元 & 否 \\
+    既有实测并集 & 8 个调优 workload，各 45--65 个规范 schedule & 汇集冻结 B1--B4 中已经执行的 direct/adapt 候选 & 只保留既有 objective，不用于选成员 \\
+    28 点重放池 & 8 个 workload，各 28 点，共 224 点 & 折叠旧 B2，再按稳定哈希从实测并集确定性回填 & 构池否；token 返回后查询 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+对 8 个调优 workload，完整规范化 $\mathcal{C}$ 各含 60--196 个候选，28 点池的逐 workload 覆盖率为 14.3\%--46.7\%，非加权均值为 24.5\%；按候选总数计算，224 点占这 8 个完整空间 1,061 点的 21.1\%。最终池总体含 112 个 direct 和 112 个 adapt，但单个 workload 因形状关系分别为 28 个 direct 或 28 个 adapt。224 点中 199 点来自旧 B2 折叠，25 点来自确定性回填，每个 workload 回填 2--5 点。
+
+回填的目的不是寻找性能更高的候选，而是在消除别名后仍保持原协议的 28 点规模，使不同 seed 与后续随机对照共享同一有限池。顺序键只包含方法标签和 canonical schedule id，不读取 runtime。尽管池构造与性能无关，它仍只覆盖已测候选；因此 $D_{90}$、$T_{90}$ 和 best-at-budget 的性能结论只适用于该 28 点冻结子池，不能外推为完整 104.4 点平均空间的性能分布。93,600 次静态分类与 224 点性能重放也不得合并为同一种“实测候选”证据。
+
+\subsection{规范化候选池上的冻结离线重放}
+
+规范化 replay 先在旧 B2 池中按 direct/adapt 语义键折叠 \texttt{vectorize} 别名，再从 B1 至 B4 的既有 direct/adapt 实测并集中按原 B2 稳定哈希回填，使每个 workload 保持 28 个候选。池构造只读取候选元数据和历史池成员，不读取 runtime。冻结协议使用 8 个 workload、5 个 seed、预算 25，共 40 条轨迹和 1000 次 callback。全部 callback 有效，记录到 21 次重复选择。
+
+规范化后 $D_{90}$ 为 0.1875，低于规范化前消融的 0.1964；40 条轨迹中 92.5\% 达到 90\% 池内最优，按原实验的 callback 横轴计算，中位 time-to-90\% 从 11.5 次降为 8.0 次。图~\ref{fig:chapter5-normalization} 同时保留这两个方向。候选密度略降而首次命中变早，说明去重减少了无效回调，但不能据此断言规范化一定提高所有搜索指标。下一小节再按唯一候选查询统一比较搜索顺序。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{chapter5_normalization_offline_replay.pdf}
+  \caption{Contract 候选规范化及冻结离线 BaCO 重放结果}
+  \label{fig:chapter5-normalization}
+\end{figure}
+
+该重放没有调用编译器，也没有进行硬件测量。objective 只在 BaCO 返回 token 后从冻结的 \texttt{measurement\_aggregates.csv} 中读取。$G_1$ 的 $D_{90}=0.0268$ 和 time-to-90\%=10.5 仍属于规范化前历史实验；$G_0$ 没有对应性能池，因此不能与规范化 $\mathcal{C}$ 做新的三空间性能比较。
+
+\subsection{与均匀随机搜索的同池唯一预算对照}
+
+为区分空间质量与搜索器增量，补充对照在同一 8 个 workload、同一 28 点池、同一 5 个 seed 上运行均匀随机搜索。random 的完整候选排列由 workload id 和 seed 的稳定散列生成，顺序生成时不读取 objective，并按无放回方式查询 25 个唯一候选。BaCO 也以 25 个唯一候选为主预算；重复建议仍返回给固定版本 BaCO 以维持其状态，但不增加唯一查询数。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{同一规范化实测池上的 BaCO 与均匀随机搜索}
+  \label{tab:chapter5-baco-random}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\centering\arraybackslash}p{0.14\textwidth}
+    >{\centering\arraybackslash}p{0.15\textwidth}
+    >{\centering\arraybackslash}p{0.16\textwidth}
+    >{\centering\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{方法} & \textbf{达到率} & \textbf{$T_{90}$ 中位数} & \textbf{mean best@5} & \textbf{mean best@10 / @25} \\
+    \midrule
+    BaCO & 0.925 & 7.5 & 0.8360 & 0.9170 / 0.9901 \\
+    均匀随机（无放回） & 1.000 & 7.0 & 0.8328 & 0.9363 / 1.0000 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+表~\ref{tab:chapter5-baco-random} 的 best fraction 以各 workload 的 28 点池内最优为 1。budget 5 的 BaCO--random 平均配对差为 0.0032，workload-cluster bootstrap 95\% CI 为 $[-0.0636,0.0643]$；budget 10 为 $-0.0193$，区间为 $[-0.0566,0.0201]$。两者均跨 0，当前证据不支持 BaCO 在低预算优于均匀随机。budget 25 的差为 $-0.0099$，区间为 $[-0.0227,-0.0011]$；random 的无放回顺序在 40 条轨迹中都达到阈值，而 BaCO 有 3 条右删失轨迹。
+
+BaCO 为取得 $40\times25=1000$ 个唯一查询共消费 1021 次 callback，其中 21 次是重复建议；random 恰为 1000 次且无重复。右删失按 26 计入时，random--BaCO 的平均 $T_{90}$ 差为 $-1.175$ 个唯一查询，95\% 区间为 $[-4.150,2.125]$，不足以声称两者在到达速度上存在稳定差异。$D_{90}=0.1875$ 对两种方法相同，因为它是候选池属性，不是搜索算法结果。综合来看，规范化池的可调用密度和去重结论成立，但本次小规模同池对照没有观察到 BaCO 相对随机搜索的增量；在预算接近池大小时，无放回覆盖反而更有利。
+
+\subsection{B1 至 B4 的固定预算结果}
+
+正式固定预算实验比较原异构空间协议下的 B1 至 B4。每种方法包含 8 个 tune workload、5 个 seed 和 25 次 callback。表~\ref{tab:chapter5-fixed-budget} 给出 $D_{90}$、最终性能和到达各自池内阈值的速度。B2 的 $D_{90}$ 最高，best-at-25 相对完整 BLIS 的几何均值也最高，为 0.948，区间跨 1。B3 和 B4 的中位 time-to-90\% 较短，但最终几何均值分别为 0.791 和 0.800。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{B1 至 B4 的空间质量与固定预算结果}
+  \label{tab:chapter5-fixed-budget}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\centering\arraybackslash}p{0.10\textwidth}
+    >{\centering\arraybackslash}p{0.15\textwidth}
+    >{\centering\arraybackslash}p{0.30\textwidth}
+    >{\centering\arraybackslash}p{0.18\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{方法} & \textbf{$D_{90}$} & \textbf{best-at-25 / B5，95\% CI} & \textbf{达到阈值比例} & \textbf{time-to-90\% 中位数} \\
+    \midrule
+    B1 & 0.0268 & 0.781 [0.688, 0.887] & 0.900 & 10.5 \\
+    B2 & 0.1964 & 0.948 [0.858, 1.043] & 0.875 & 11.5 \\
+    B3 & 0.0446 & 0.791 [0.702, 0.889] & 1.000 & 6.0 \\
+    B4 & 0.0670 & 0.800 [0.713, 0.895] & 0.900 & 7.0 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+图~\ref{fig:chapter5-fixed-budget} 左侧展示 40 条 trajectory 在每次评价后的中位 best-so-far 和四分位带，右侧给出最终几何均值及 bootstrap 区间。个别 workload 或轨迹可以超过 B5，B2 的总体区间仍跨 1，不能写成稳定超过完整 BLIS。B3/B4 使用更窄的核心和 shell，其较短 time-to-90\% 是相对各自池内最优，不代表相对完整库的最终性能更高。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{chapter5_fixed_budget_search.pdf}
+  \caption{B1 至 B4 的固定预算历次最优性能与完整 BLIS 参考}
+  \label{fig:chapter5-fixed-budget}
+\end{figure}
+
+原异构空间实验回答的是“整个方法配置在相同 callback 预算下表现如何”。B2、B3 和 B4 的成员并不完全相同，因此该结果不能单独识别某个静态分数的因果贡献。软信息的严格同池比较放在第~\ref{subsec:chapter5-soft-prior} 节。
+
+\subsection{编译器基线与硬规则消融}
+
+优化 dynamic MLIR 在 36/36 个 shape 上快于标量 dynamic fallback，几何加速为 7.710 倍，但只达到完整 BLIS 的 0.184。真实 BLIS adapter 在 7 个动态 shape 上相对同一个标量回退为 15.905 倍，95\% CI 为 [10.250, 22.036]。后一个数字证明 packing 和微内核调用确实生效，其基准不是优化 dynamic MLIR，也不是完整 BLIS，不能作为库级加速结论。
+
+硬规则消融给出更直接的边界。完整 B4 的 best-at-25/B5 为 0.800 [0.713, 0.895]；移除 packing 规则后降为 0.046 [0.042, 0.050]。图~\ref{fig:chapter5-hard-soft}a 使用对数坐标显示这一差距。由于消融会改变候选成员，该结果仍是操作性边界，不是单参数纯因果估计；不过它与真实 packing/call 路径、符号和 fringe 证据相互吻合，说明 packing 不是可随意迁移的性能提示，而是当前微内核路径成立的关键实现义务。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.97\textwidth]{chapter5_hard_soft_ablation.pdf}
+  \caption{硬 packing 规则与软性能信息的消融结果}
+  \label{fig:chapter5-hard-soft}
+\end{figure}
+
+RQ2 的结论需要分成两部分。就空间内在质量而言，硬 Contract 大幅提高可调用密度，并在规范化后消除当前已识别的语义重复。就性能而言，B2 在原异构空间协议中最强，B3/B4 没有稳定优于 B2。硬接纳边界具有明确作用，静态软排序则需要目标数据和同池实验进一步检验。
+
+\section{RQ3：跨 dtype、库、ISA 与主机的迁移边界}
+
+\subsection{BLIS \texttt{f32} 到 \texttt{f64}}
+
+BLIS Haswell \texttt{f64} $6\times8$ 是同一库和 ISA 上的第二 Contract。它使用未修改的核心 generator 生成 36 个 workload、1008 个 pool row，其中 252 个 direct、756 个 adapt。系统构建 128 个候选二进制并完成 3132 个 trial，所有 predicted path 与 observed path 一致。before/after SHA-256 审计确认加入该 package 时核心 generator 的修改行数为 0。
+
+这一结果支持同库新 dtype 的核心复用，却不是独立后端证明。性能也没有随 Contract 一起固定迁移：候选池最优相对完整 BLIS 的几何均值在 i7 上为 1.064，在 i9 上为 0.804。相同合法空间可以在两机正确执行，绝对排序仍会换向。
+
+\subsection{共享 Schema 与 OpenBLAS RVV 包}
+
+三个 package 的 Contract leaf path 交集为 31，并集为 34，IoU 为 0.912。BLIS \texttt{f32}、BLIS \texttt{f64} 和 OpenBLAS RVV 的共享字段覆盖率分别为 0.969、0.969 和 0.939。共享核心中没有按 package ID 编写的分支。表~\ref{tab:chapter5-reuse} 汇总了复用边界。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{三个微内核包的表示、生成与执行复用边界}
+  \label{tab:chapter5-reuse}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.27\textwidth}
+    >{\centering\arraybackslash}p{0.16\textwidth}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{package} & \textbf{共享字段覆盖} & \textbf{生成器状态} & \textbf{可支持的结论} \\
+    \midrule
+    BLIS Haswell \texttt{f32} $6\times16$ & 0.969 & 基准核心路径 & Schema、generator、adapter 与执行闭环基准 \\
+    BLIS Haswell \texttt{f64} $6\times8$ & 0.969 & 核心 generator 零修改复用 & 支持同库第二 dtype 的核心复用 \\
+    OpenBLAS RV64GCV \texttt{f32} $8\times8$ & 0.939 & package-local generator 与 adapter & 支持第二库和第二 ISA 的 Schema、路径语义与物理执行，不支持零修改后端接入 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+OpenBLAS RVV package 复用了 Contract Schema、direct/adapt 语义、诊断记录和观测接口，但其 panel layout、内部 \texttt{sgemm\_kernel} ABI、packing 和板端部署由 package-local 代码实现。现有证据不能支持“任意新 package 均无需改动核心生成路径”。由于缺少干净的 onboarding commit 和工时日志，本章也不事后估算新增历史代码量或人工时间。
+
+\subsection{物理 K230 的合法执行与排序反例}
+
+独立 K230 后端实验在 8 个工作负载上测量标量路径、显式 RVV 候选和完整 OpenBLAS，共得到 560 条正确计时记录。每个工作负载选择最佳显式 RVV 调度后，相对进程内标量路径的几何加速为 2.288 倍；完整 OpenBLAS 相对标量路径为 13.470 倍。不同形状的获胜调度并不相同，固定的 BLIS 来源候选只在 5/8 个工作负载上可比，其几何比为 0.847。Contract 的硬接纳建模和检查语义能够用于 RVV，x86 来源的固定性能排序不能据此迁移。
+
+更严格的 Transformer exact-shape 外部实验包含 429 条 K230 trial，429/429 正确。8 个 workload 走 direct，2 个包含 fringe 并走 adapt。另有 3 个预声明 MLIR closure case，分别覆盖 direct 和 M/N/K 非整除，C adapter、MLIR adapter 与 OpenBLAS 各执行 5 个 trial，共 45/45 条正确。C adapter/MLIR adapter 的几何时间比为 0.9887，95\% CI 为 [0.9765, 1.0009]，满足实验前冻结的 wrapper parity 条件。这说明 MLIR wrapper 没有改变受测 adapter 的语义或产生可辨别的额外计时差异。
+
+\subsection{目标数据、静态先验与跨主机复制}
+\label{subsec:chapter5-soft-prior}
+
+原 B2/B3/B4 的候选成员不同，不能直接回答静态排序是否有效。严格同池实验因此固定 canonical pool、唯一评价预算、公共 oracle 和 BaCO acquisition，只改变 warm start。B2 不使用先验，B3 使用静态 BLIS 排序，B4 使用 design/validation 目标数据校准后的排序。holdout 目标值只在调优器返回 token 后读取。
+
+在 i7 上，B4/B2 在 budget 5 和 10 分别为 1.058 [1.027, 1.092] 和 1.035 [1.011, 1.064]。相同协议在 i9 上得到 0.992 [0.977, 1.007] 和 0.999 [0.990, 1.006]，区间均跨 1。实验前冻结的判据要求至少两个环境出现区间下界高于 1，因此总体 acceptance 为 FAIL。这里的 FAIL 是科学结论，不是运行故障。
+
+终止实验进一步拆分目标数据和 BLIS 软字段。Data-only 使用目标测量、几何关系和 workload family；Expert+Data 在此基础上加入 \texttt{active\_static\_score} 及交互项。表~\ref{tab:chapter5-soft-prior} 给出严格同池配对结果。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{软先验、目标数据与跨主机的严格同池结果}
+  \label{tab:chapter5-soft-prior}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.25\textwidth}
+    >{\raggedright\arraybackslash}p{0.29\textwidth}
+    >{\centering\arraybackslash}p{0.19\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{环境与比较} & \textbf{budget 5，95\% CI} & \textbf{budget 10，95\% CI} & \textbf{结论} \\
+    \midrule
+    i7：calibrated / no-prior &
+    1.058 [1.027, 1.092] &
+    1.035 [1.011, 1.064] &
+    本地低预算收益有统计支持 \\
+    i9：calibrated / no-prior &
+    0.992 [0.977, 1.007] &
+    0.999 [0.990, 1.006] &
+    未复制 i7 收益 \\
+    i7：Data-only / no-prior &
+    1.049 [1.024, 1.075] &
+    1.035 [1.011, 1.063] &
+    目标数据提高样本效率 \\
+    i7：Expert+Data / Data-only &
+    1.009 [0.999, 1.027] &
+    1.000 [1.000, 1.000] &
+    当前 BLIS 软字段无稳定增量 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Data-only 相对 no-prior 在两个预算点的区间均高于 1；Expert+Data 相对 Data-only 的区间没有满足实验前冻结的门槛。平均 time-to-95\%-oracle 从 no-prior 的 7.90 次降为 Data-only 的 3.08 次，Expert+Data 仍为 3.08 次。图~\ref{fig:chapter5-hard-soft}b 和图~\ref{fig:chapter5-transfer}b 分别显示目标数据增量与跨主机复制。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{chapter5_transfer_layers_cross_host.pdf}
+  \caption{四层迁移边界与严格同池的跨主机复制}
+  \label{fig:chapter5-transfer}
+\end{figure}
+
+校准使用 591 条目标测量记录，Data-only 的完整观测与编译成本为 531.95 s。平均每个 holdout 工作负载节省 4.817 次评价；若只按测量记录数量计算，校准成本约需 123 个未来调优工作负载才能抵消，计入实测编译与观测时间后则增至约 2,294 个。两种口径都远超冻结的 12 个 holdout，且不能与部署阶段的矩阵调用次数混用。RQ4 将另行分析部署调用规模。
+
+\subsection{迁移结论的四层划分}
+
+图~\ref{fig:chapter5-transfer}a 将现有证据压缩为四层。Contract Schema 在同库新 dtype、新库新 ISA 和同包新主机上均可复用。核心 generator 对 BLIS \texttt{f64} 和 i9 不需要 package 特判，OpenBLAS RVV 仍使用包内路径。合法执行在三个 package 和两台 x86 主机上得到验证。性能排序的迁移最弱，i7 的候选池与校准收益均未在 i9 保持同样方向，RVV 上也没有单一来源 schedule 支配全部 workload。
+
+因此，RQ3 不能用一个“可迁移”或“不可迁移”概括。表示和接纳语义最稳定，生成器复用取决于库与 ABI，合法执行需要目标 adapter 和实测，性能排序必须由目标环境决定。
+
+\section{RQ4：完整库边界、搜索成本与部署决策}
+
+\subsection{外部目标上的完整库对照}
+
+i9 外部实验冻结 10 个精确形状工作负载，每个工作负载含 28 个生成候选和 1 个完整 BLIS 对照。返回归档通过 SHA-256、manifest、86 个可执行文件和结果覆盖检查。870/870 次试验正确，最佳生成池/BLIS 的工作负载几何均值为 0.5448，95\% CI 为 [0.4833, 0.6104]，生成池在 0/10 个工作负载上获胜。
+
+K230 外部实验经 Contract 和工具链过滤后保留 133 个可执行适配器组，并加入 10 个完整 OpenBLAS 组，共 429 次试验。全部结果正确，最佳生成适配器/OpenBLAS 的几何均值为 0.6730，95\% CI 为 [0.6193, 0.7253]，同样为 0/10 获胜。图~\ref{fig:chapter5-economics}a 将这两个完整库边界与 K230 包装器一致性放在一起。前两项衡量生成路径与完整库的性能差距，第三项只检验两种包装器的计时一致性，三者的语义不能混用。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.98\textwidth]{chapter5_library_boundary_economics.pdf}
+  \caption{完整库性能边界、包装器一致性与搜索成本摊销}
+  \label{fig:chapter5-economics}
+\end{figure}
+
+生成 adapter 已经正确调用真实微内核，但没有复现完整库的全部宏观循环、kernel selection、packing 组织和目标特化。这个负结果说明“能接纳”与“比完整库更快”是两个不同命题，也为部署 guard 提供了直接依据。
+
+\subsection{Qwen 调用覆盖与结论范围}
+
+Qwen2.5-0.5B trace 记录 338 个 Linear 调用，其中 336 个属于 24 个 Transformer block 内的核心 projection。归并后得到 192 个 canonical core call 和 8 个 canonical workload。实验池覆盖 192/192 个核心调用及对应 FLOP；若分母改为全部 Linear FLOP，覆盖率为 72.44\%，未覆盖部分主要来自单独排除的 2 个 \texttt{lm\_head} 调用。
+
+trace-weighted 计算使用 exact-shape 微基准时间，不包含 attention、激活、内存分配、通信或模型框架开销。它回答受测 GEMM 调用在冻结频率下如何加权，不是端到端模型加速。i9 和 K230 上均没有生成候选超过完整库，guarded policy 因此选择库路径，最终相对库的投影比值为 1。
+
+\subsection{价值函数与 break-even}
+
+搜索净价值沿用式~\eqref{eq:chapter2-search-value}。在本章语境中，$H_j$ 是目标中第 $j$ 个 shape 在部署 horizon 内的调用次数，$t_{b,j}$ 与 $t_{o,j}$ 分别是完整库和选定候选时间，$C_c$ 是全局校准或模型拟合成本，$C_{s,j}$ 包含 shape 相关的生成、编译、测量和 tuner 成本。现有日志支持聚合 $\sum_j C_{s,j}$，不支持事后编造每个 shape 的成本分摊。部署决策采用保守规则
+
+\begin{equation}
+\operatorname{LCB}_{95}\!\left(V(H)\right)>0.
+\label{eq:chapter5-lcb-decision}
+\end{equation}
+
+只有满足式~\eqref{eq:chapter5-lcb-decision} 才启动搜索。该规则分别处理三种 horizon：后续调优 workload、实际矩阵调用和模型 inference，三者不能互换。
+
+i7 上存在一个事后描述性上界。观察性能后筛出 19 个获胜形状，并把每个形状各调用一次定义为一个等频合成部署周期。模型拟合成本 $C_c$ 为 58.239 ms，聚合搜索、编译和测量成本为 531,895.625 ms；每个周期的点估计节省为 3.207 ms，95\% CI 为 [0.717, 4.067]。点估计盈亏平衡点约为 165,865 个周期，按 LCB95 计算则需约 741,587 个周期。图~\ref{fig:chapter5-economics}b 显示净值曲线。该集合在查看性能后选出，一个周期既不是一次模型推理，也不是观测到的生产频率，因此只能作为上界，不能当作可部署策略的收益估计。
+
+i9 和 K230 的 Qwen exact-shape 场景在实验前冻结。生成路径相对完整库的每 inference 节省分别为 $-275.16$ ms 和 $-5527.75$ ms。即使把搜索成本设为 0，式~\eqref{eq:chapter2-search-value} 的收益项仍为负，不存在有限正向 break-even。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{完整库、Qwen 覆盖与盈亏平衡决策}
+  \label{tab:chapter5-economics}
+  \begin{tabularx}{\textwidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.23\textwidth}
+    >{\raggedright\arraybackslash}p{0.27\textwidth}
+    >{\raggedright\arraybackslash}p{0.27\textwidth}
+    >{\raggedright\arraybackslash}X
+    @{}
+  }
+    \toprule
+    \textbf{场景} & \textbf{性能或覆盖证据} & \textbf{horizon 结果} & \textbf{决策} \\
+    \midrule
+    i9 Qwen exact-shape &
+    生成池/BLIS=0.5448 [0.4833, 0.6104]，0/10 获胜 &
+    每 inference 节省为 $-275.16$ ms，无有限 break-even &
+    使用完整 BLIS \\
+    K230 Qwen exact-shape &
+    adapter/OpenBLAS=0.6730 [0.6193, 0.7253]，0/10 获胜 &
+    每 inference 节省为 $-5527.75$ ms，无有限 break-even &
+    使用完整 OpenBLAS \\
+    Qwen trace 代表性 &
+    核心 projection 192/192 call 与 FLOP；全部 Linear FLOP 的 72.44\% &
+    仅为 GEMM trace-weighted projection &
+    不写成端到端模型加速 \\
+    i7 事后 19-shape &
+    每合成 cycle 节省 3.207 ms [0.717, 4.067] &
+    点估计 165,865 个周期；LCB95 为 741,587 个周期 &
+    只作描述性上界 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+RQ4 的答案由目标场景决定。搜索经济性不是由候选是否合法决定，也不能用相对标量 fallback 的加速替代。对于两个预声明 exact-shape 场景，完整库同时提供更高性能和零额外搜索成本，保守决策是直接使用库。只有存在可验证的正向库级收益、足够长的调用 horizon 且 LCB95 净值为正时，搜索才值得发生。
+
+\section{有效性威胁与适用范围}
+
+\subsection{内部有效性}
+
+正式搜索轨迹来自冻结的真实候选语料，而不是每个 seed 重新编译。这样可以消除重复编译造成的预算差异，也使搜索过程无法反映编译失败随在线状态变化的影响。本文用 manifest、二进制哈希、正确性状态和 observed path 证明 objective 的来源，并把规范化 replay 明确标为离线结果。
+
+开发主机运行于 WSL2，主机调度和频率波动会扩大计时噪声。正式本地实验采用绑核、单线程、预热、多次计时和独立进程 trial；不满足稳定性资格的 WSL exact-shape 数据没有进入 Qwen 结论。i9 与 K230 的冻结包在目标端独立执行，仍不能消除所有系统噪声。
+
+\subsection{构念有效性}
+
+callable density 衡量 direct/adapt 在空间中的比例，不衡量性能。$D_{90}$ 是相对池内最优的密度，受到候选池定义影响。time-to-90\% 也是池内指标，不能替代完整库比较。本文因此将空间内在质量、固定预算结果和完整库边界分开报告。
+
+动态 BLIS adapter 的 15.905 倍加速以标量 fallback 为分母，只支持真实 packing 和微内核调用链生效。完整库对照统一使用 B5、\texttt{bli\_sgemm} 或 \texttt{cblas\_sgemm}。Qwen 结果是 GEMM trace 加权，不包含完整模型运行时。
+
+\subsection{统计结论有效性}
+
+固定预算和同池实验的区间重采样 workload 或 workload-seed，不重采样主机。i7 与 i9 的差异以两次独立环境结果陈述，不据此估计“所有 x86 主机”的总体分布。多个消融会改变空间成员，除严格同池对照外，不把结果解释为单一规则的因果效应。
+
+i7 的 19-shape 集合在查看性能后选择，存在明显选择偏差。本文只把它用作搜索可能获得的描述性上界，正式部署结论来自预声明的 i9 和 K230 exact-shape 场景。
+
+\subsection{外部有效性}
+
+实验范围是 rank-2、行主序、单线程 GEMM，覆盖两个 dtype、两个 ISA 和三个微内核包。BLIS \texttt{f32}/\texttt{f64} 属于同一库和 Haswell 后端；OpenBLAS RVV 提供一个独立库与 ISA 包，但仍只有一块 K230。任意 layout、任意 stride、更多 $\alpha/\beta$ 模式、多线程、NUMA、batch GEMM、GPU 和融合算子均未获得同等证据。
+
+这些限制不削弱 Contract 对受测接纳边界的结论，却限制性能和复用主张的范围。尤其是 OpenBLAS RVV 的 package-local generator 表明，共享 Schema 不等于零修改后端接入；i7/i9 排名换向表明，合法调度也不等于性能顺序可迁移。
+
+\section{本章小结}
+
+本章用安全性、空间、迁移和经济性四组实验检验 Contract 驱动方法。RQ1 中，三个微内核包的 24 个危险变异均被拒绝或安全降级，1,256 个已测候选与工作负载组合的路径预测和观测完全一致；静态检查器的能力止于声明字段，缓冲区内容错误由运行时数值参照负责。
+
+RQ2 中，36 个工作负载的 93,600 次分类显示，规范化 $\mathcal{C}$ 空间平均只保留 104.4 个唯一候选，可调用候选密度为 1，IR 重复率为 0。在 28 点冻结实测子池上，$D_{90}$ 为 0.1875；同一 25 唯一查询预算下，BaCO/random 的中位 $T_{90}$ 为 7.5/7.0，低预算配对区间跨 0，未显示 BaCO 的稳定增量。原异构空间协议下 B2 的固定预算结果最强，B3/B4 没有稳定优于 Contract-only；去除 packing 规则则使性能大幅下降。
+
+RQ3 表明，Contract Schema 和接纳语义比生成器与性能排序更容易复用。BLIS \texttt{f64} 复用了核心 generator，OpenBLAS RVV 仍需要 package-local 生成和 adapter。i7 上的校准收益没有在 i9 上复制，当前 BLIS 软字段在目标数据之上也没有稳定增量。
+
+RQ4 将方法边界落到部署决策。预声明的 i9 和 K230 exact-shape 场景中，生成路径均低于完整库，且不存在有限的正向 break-even。由此得到的总体结论是：硬 Contract 的价值在于提供可审计、可诊断和可执行的接纳边界；性能排序必须依赖目标测量，启动搜索还必须通过完整库与全成本检验。

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "contract": {
+    "id": "openblas_riscv64_zvl128b_f32_8x8",
+    "kernel_id": "openblas_riscv64_zvl128b_f32_8x8",
+    "fact_id": "openblas.riscv64_zvl128b.gemm.f32",
+    "operation": "linalg.matmul",
+    "dtype": "f32",
+    "target": {
+      "machine": "riscv64",
+      "architecture": "riscv64_zvl128b",
+      "required_features": ["rv64gc", "rvv", "zvl128b"]
+    },
+    "kernel": "sgemm_kernel",
+    "isa": ["rv64gc", "rvv", "zvl128b"],
+    "mr": 8,
+    "nr": 8,
+    "register_tile": {"m": 8, "n": 8},
+    "k_constraint": {
+      "minimum": 1,
+      "multiple": 1,
+      "main_loop_step": 1,
+      "remainder_supported": true
+    },
+    "cache_blocking": {"mc": 128, "kc": 240, "nc": 12288},
+    "input_layout": {
+      "a": "OpenBLAS packed A panel",
+      "b": "OpenBLAS packed B panel"
+    },
+    "output_layout": "column_major_kernel_tile_with_row_major_adapter",
+    "stride": {
+      "a": "packed panel",
+      "b": "packed panel",
+      "c": "column-major ldc passed to kernel"
+    },
+    "alignment": {
+      "a_bytes": null,
+      "b_bytes": null,
+      "c_bytes": null,
+      "verification_status": "runtime_allocated"
+    },
+    "packing": {
+      "required_for_direct": true,
+      "a_panel_multiple": "mr",
+      "b_panel_multiple": "nr",
+      "layout": "openblas_rvv_8x8_panel",
+      "kernels": ["sgemm_oncopy", "sgemm_otcopy"],
+      "adapter": "package-local ABI-equivalent explicit packer"
+    },
+    "layout": {"output_preference": "row_major_via_adapter"},
+    "vectorization": {
+      "required_features": ["rvv", "zvl128b"],
+      "vector_bits": 128,
+      "lanes": 4
+    },
+    "tail_policy": {
+      "kernel": "generated 8x8 kernel with 4/2/1 M and N tails",
+      "adapter": "variable-size final panels and row-major scatter"
+    },
+    "call_convention": "OpenBLAS internal GEMM kernel ABI",
+    "fallback_path": "complete cblas_sgemm",
+    "kernel_requirements": {
+      "fixed_mr": 8,
+      "fixed_nr": 8,
+      "packed_a": true,
+      "packed_b": true,
+      "required_features": ["rvv", "zvl128b"]
+    },
+    "adapter_capabilities": {
+      "insert_packing": true,
+      "handle_mn_tail": true,
+      "handle_k_remainder": true,
+      "fallback_when_unavailable": true
+    },
+    "verification_status": "source_cross_checked_pending_external_runtime",
+    "evidence_fact": "openblas.riscv64_zvl128b.gemm.f32"
+  }
+}

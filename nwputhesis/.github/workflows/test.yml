@@ -1,0 +1,101 @@
+name: Test
+
+on:
+  push:
+    paths-ignore:
+      - "README.md"
+      - "LICENSE"
+      - ".gitattributes"
+      - ".gitignore"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".vscode/**"
+      - "graduate.pdf"
+  pull_request:
+    paths-ignore:
+      - "README.md"
+      - "LICENSE"
+      - ".gitattributes"
+      - ".gitignore"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".vscode/**"
+      - "graduate.pdf"
+  workflow_dispatch:
+
+env:
+  CORE_PKGS: scheme-basic tools amsmath amsfonts
+  XECJK_PKGS: fontspec xecjk ulem iftex
+  BIB_PKGS: biblatex biblatex-gb7714-2015 biber
+  BIN_PKGS: latexmk
+  REQUIRED_PKGS: >-
+    algorithmicx algorithms appendix bookmark booktabs caption catchfile
+    enumitem etoolbox fancyhdr float geometry ifplatform koma-script
+    listings makecell multirow ntheorem pdfpages pdflscape pgf
+    silence titlesec wrapfig xcolor xkeyval xstring
+  FONT_PKGS: fandol tex-gyre dejavu
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, 'ci skip') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        texlive_version: [2025, 2026]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install TeX Live
+        uses: zauguin/install-texlive@v4
+        with:
+          packages: >-
+            ${{ env.CORE_PKGS }} ${{ env.XECJK_PKGS }} ${{ env.BIB_PKGS }}
+            ${{ env.REQUIRED_PKGS }} ${{ env.FONT_PKGS }}
+            ${{ env.BIN_PKGS }}
+          texlive_version: ${{ matrix.texlive_version }}
+          cache_version: tl${{ matrix.texlive_version }}-2026-04-08-v1
+
+      - name: Build document
+        run: |
+          latexmk graduate
+          latexmk bachelor
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nwputhesis-pdf-tl${{ matrix.texlive_version }}
+          path: |
+            build/graduate.pdf
+            build/bachelor.pdf
+          retention-days: 30
+
+  build-cross-platform:
+    if: ${{ !contains(github.event.head_commit.message, 'ci skip') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        texlive_version: [2025, 2026]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Install TeX Live
+        uses: zauguin/install-texlive@v4
+        with:
+          packages: >-
+            ${{ env.CORE_PKGS }} ${{ env.XECJK_PKGS }} ${{ env.BIB_PKGS }}
+            ${{ env.REQUIRED_PKGS }} ${{ env.FONT_PKGS }}
+            ${{ env.BIN_PKGS }}
+          texlive_version: ${{ matrix.texlive_version }}
+          cache_version: tl${{ matrix.texlive_version }}-2026-04-08-v1
+
+      - name: Build document
+        run: |
+          latexmk graduate
+          latexmk bachelor

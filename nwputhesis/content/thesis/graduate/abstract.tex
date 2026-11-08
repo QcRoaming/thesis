@@ -1,0 +1,28 @@
+% !TeX root = ../../../graduate.tex
+%% 摘要
+
+% 中文摘要
+\begin{abstract}
+MLIR Transform Dialect 可参数化表达张量调度，自动调优器可在给定空间内搜索配置，但二者并不定义生成调度何时能够安全调用外部高性能微内核。微内核调用条件散落在库源码和后端中，性能偏好又依赖目标环境。将二者混为专家规则，会同时削弱可执行性解释和跨目标性能判断。
+
+本文提出微内核可接纳性契约驱动的调度空间生成方法。该方法从固定版本的 BLIS 和 OpenBLAS 中提取可追溯事实，将硬调用条件编译为微内核可接纳性契约（Microkernel Admissibility Contract），将性能信息保留为可撤销的软属性。契约编译器通过约束传播和参数活性分析生成直接调用、适配调用、通用回退和拒绝四类路径，并消除不改变生成结果的等价参数组合。系统贯通契约、Transform 调度、自动调优、数据打包、边界适配、LLVM 降低和目标执行，以数值结果、中间表示、链接符号和运行路径联合验证实际调用，覆盖 BLIS Haswell 单精度 $6\times16$、双精度 $6\times8$ 和 OpenBLAS RV64GCV 单精度 $8\times8$ 三个微内核包。
+
+对 36 个预声明工作负载的 93,600 次静态分类表明，契约与参数规范化将每个工作负载的完整静态候选数由 2,600 个压缩至平均 104.4 个，可调用候选密度为 100\%，当前路径下的中间表示重复率为 0。兼容性检查与 1,256 个已测候选的实际路径一致，24 个危险单字段变异均在调用前被拒绝或安全降级。性能重放只使用其中 8 个工作负载各 28 点的冻结实测子池，其 $D_{90}$ 为 0.1875。在 25 个唯一查询预算下，BaCO 与均匀无放回随机搜索的中位 $T_{90}$ 为 7.5 和 7.0，达到率为 92.5\% 和 100\%；budget 5 的平均配对差为 0.0032，95\% 区间跨 0。该对照没有重新编译或测量候选，也不支持 BaCO 优于随机搜索。
+
+跨目标实验中，i7 上的低预算校准收益未能在 i9 上复制，静态性能属性相对目标数据也无稳定增量。对于预声明的 Transformer 精确形状，最佳生成路径相对完整 BLIS 和 OpenBLAS 的性能几何均值在 i9 和物理 K230 上为 0.5448 和 0.6730，均未在 10 个工作负载中的任何一个超过完整库，因而不存在有限的正向成本摊销点。本文方法的主要价值是把隐含调用前提转化为可审计、可诊断且可由编译器消费的接纳边界；在三个受测微内核包中，边界表示与执行语义比性能排序呈现出更强的复用性。候选性能仍需目标测量，是否搜索还取决于完整库基线、调优成本和部署规模。上述结论限于受测的行主序、单线程 rank-2 GEMM 和三个微内核包。
+
+    \keywordslist{通用矩阵乘法, MLIR Transform Dialect, 微内核可接纳性契约, 调度空间, 自动调优, 搜索经济性}
+\end{abstract}
+
+% 英文摘要
+\begin{engabstract}
+MLIR Transform Dialect parameterizes tensor schedules, and autotuners search them, but neither determines when generated schedules may safely invoke external microkernels. Call requirements are scattered across libraries and backends, whereas performance preferences are target dependent; merging them obscures admissibility and risks transferring rankings.
+
+This thesis proposes schedule-space generation driven by Microkernel Admissibility Contracts. It separates traceable facts from pinned BLIS and OpenBLAS revisions into hard call requirements and revocable performance attributes. A Contract compiler applies constraint propagation and parameter-liveness analysis to generate direct, adapt, fallback, and reject paths and remove code-equivalent configurations. The implementation connects Contracts to Transform schedules, packing, boundary adaptation, LLVM lowering, and target execution; numerical results, intermediate representations, symbols, and runtime paths jointly check actual calls. Tested packages are BLIS Haswell \texttt{f32} $6\times16$ and \texttt{f64} $6\times8$, and OpenBLAS RV64GCV \texttt{f32} $8\times8$.
+
+Across 93,600 classifications for 36 predeclared workloads, Contract filtering and normalization reduced the full static space from 2,600 candidates per workload to 104.4 on average, with 100\% callable density and no IR duplicates on the current paths. Predictions matched 1,256 measured runtime paths; all 24 hazardous single-field mutations were rejected or safely degraded. Performance replay used only frozen 28-candidate subpools for eight workloads, where $D_{90}=0.1875$. With 25 unique queries, BaCO and uniform sampling without replacement had median $T_{90}$ values of 7.5 and 7.0 and success rates of 92.5\% and 100\%. The budget-5 mean paired difference was 0.0032 with a 95\% interval crossing zero. No candidate was recompiled or remeasured, and the result does not support a BaCO advantage.
+
+Across targets, the i7 low-budget calibration gain did not replicate on the i9, and static performance attributes added no stable value beyond target data. For predeclared Transformer exact shapes, generated-to-library ratios were 0.5448 on the i9 with BLIS and 0.6730 on the physical K230 with OpenBLAS; neither target won any of ten workloads, so no finite positive break-even exists. The method instead exposes implicit call requirements as auditable, diagnosable compiler boundaries. In the three tested packages, boundary representation and execution semantics were more reusable than performance rankings. Performance requires target measurements, while search decisions also require the full-library baseline, tuning cost, and deployment scale. The scope is tested row-major, single-threaded rank-2 GEMM and three microkernel packages.
+
+    \engkeywordslist{GEMM, MLIR Transform Dialect, microkernel admissibility contract, schedule space, autotuning, search economics}
+\end{engabstract}

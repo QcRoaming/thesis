@@ -1,0 +1,1259 @@
+# 《MLIR：面向摩尔定律终结时代的编译器基础设施》全文精读
+
+> **Original title:** MLIR: A Compiler Infrastructure for the End of Moore’s Law  
+> **Authors:** Chris Lattner, Mehdi Amini, Uday Bondhugula, Albert Cohen, Andy Davis, Jacques Pienaar, River Riddle, Tatiana Shpeisman, Nicolas Vasilache, Oleksandr Zinenko  
+> **Author note:** Chris Lattner 在论文发表时任职于 SiFive  
+> **Source:** arXiv:2002.11054v2 [cs.PL], 1 March 2020  
+> **Paper type:** 编译器基础设施／系统设计论文  
+> **Reader mode:** 全文逐段中英对照，图表按首次实质讨论位置放置
+
+## 导航
+
+- [摘要](#摘要)
+- [1 引言](#1-引言)
+- [2 设计原则](#2-设计原则)
+- [3 IR 设计细节](#3-ir-设计细节)
+- [4 IR 基础设施](#4-ir-基础设施)
+- [5 评估：MLIR 的应用](#5-评估mlir-的应用)
+- [6 MLIR 设计的影响](#6-mlir-设计的影响)
+- [7 相关工作](#7-相关工作)
+- [8 结论与未来工作](#8-结论与未来工作)
+- [参考文献](#参考文献)
+- [精读提示](#精读提示)
+
+## 术语表
+
+| Canonical term | 首次定义／中文 | Source variants | 本读本采用 |
+|---|---|---|---|
+| MLIR | MLIR 编译器基础设施 | MLIR system, MLIR project | 保留 MLIR |
+| intermediate representation (IR) | 中间表示（IR） | representation | 中间表示 |
+| dialect | 方言 | IR dialect | 方言 |
+| operation (Op) | 操作（Op） | operation, Ops | 首次写“操作（Op）”，其后写 Op |
+| region | 区域 | nested region | 区域 |
+| block | 块 | basic control-flow block | 块 |
+| Static Single Assignment (SSA) | 静态单赋值（SSA）形式 | functional SSA | SSA 形式 |
+| lowering | 从高层抽象向低层抽象转换 | progressive lowering | 降低；progressive lowering 译为“渐进式降低” |
+| normalization | 将多种结构归约到较少的统一表示 | normalized representation | 归一化 |
+| canonicalization | 通过等价重写形成规范形式 | Canonicalization pass | 规范化 |
+| pass | 对 IR 执行分析或变换的编译阶段 | compiler pass, IR pass | 保留 Pass |
+| trait | 描述 Op 性质的声明式信息 | operation trait | 特征 |
+| Operation Definition Specification / ODS | Op 的声明式定义机制 | 原文同时出现 Operation Descriptions 与 Operation Definition Syntax | 统一称 ODS（操作定义规范），图注保留原文说法 |
+| Declarative Rewrite Rule (DRR) | 声明式重写规则（DRR） | graph rewrite rule | DRR |
+| affine dialect | 仿射方言 | affine representation | 仿射方言 |
+| polyhedral model | 多面体模型 | polyhedral representation | 多面体模型 |
+| round-trippable | 文本表示解析后可无损还原并再次打印 | textual IR form | 可往返 |
+
+## 摘要
+
+<a id="S001"></a>
+**Source:** p.1 S001
+
+**Original:** This work presents MLIR, a novel approach to building reusable and extensible compiler infrastructure. MLIR aims to address software fragmentation, improve compilation for heterogeneous hardware, significantly reduce the cost of building domain specific compilers, and aid in connecting existing compilers together. MLIR facilitates the design and implementation of code generators, translators and optimizers at different levels of abstraction and also across application domains, hardware targets and execution environments. The contribution of this work includes (1) discussion of MLIR as a research artifact, built for extension and evolution, and identifying the challenges and opportunities posed by this novel design point in design, semantics, optimization specification, system, and engineering. (2) evaluation of MLIR as a generalized infrastructure that reduces the cost of building compilers—describing diverse use-cases to show research and educational opportunities for future programming languages, compilers, execution environments, and computer architecture. The paper also presents the rationale for MLIR, its original design principles, structures and semantics.
+
+**中文:** 本文介绍 MLIR，这是一种构建可复用、可扩展编译器基础设施的新方法。MLIR 旨在缓解软件碎片化，改进面向异构硬件的编译，显著降低构建领域专用编译器的成本，并帮助既有编译器相互衔接。MLIR 支持在不同抽象层次上设计和实现代码生成器、转换器与优化器，同时跨越不同应用领域、硬件目标和执行环境。本文的贡献包括：（1）将 MLIR 作为面向扩展与演化而构建的研究制品加以讨论，并识别这一新设计点在设计、语义、优化规约、系统和工程方面带来的挑战与机遇；（2）评估 MLIR 作为通用基础设施降低编译器构建成本的能力，通过多样化用例展示未来程序设计语言、编译器、执行环境和计算机体系结构中的研究与教育机会。论文还给出了 MLIR 的设计动机、最初的设计原则、结构与语义。
+
+## 1 引言
+
+<a id="S002"></a>
+**Source:** p.1 S002
+
+**Original:** Compiler design is a mature field with a wide range of well-known algorithms, with applications to code generation, static analysis, program transformation, and more. The field also has seen the development of a number of mature technology platforms which have enabled massive reuse across the compiler community, including systems like the LLVM compiler infrastructure [25], the Java Virtual Machine (JVM) [26], and many others. A common characteristic of these popular systems is their “one size fits all” approach—a single abstraction level to interface with the system: the LLVM Intermediate Representation (IR) is roughly “C with vectors”, and JVM provides an “object-oriented type system with a garbage collector” abstraction. This “one size fits all” approach is incredibly valuable—and in practice, the mapping to these domains from ubiquitous source languages (C/C++ and Java respectively) is straightforward.
+
+**中文:** 编译器设计是一个成熟领域，拥有大量众所周知的算法，可用于代码生成、静态分析和程序变换等任务。该领域也形成了若干成熟的技术平台，使编译器社区能够大规模复用成果，例如 LLVM 编译器基础设施 [25]、Java 虚拟机（JVM）[26] 等。这些流行系统有一个共同特征：采用“一种规格适合所有场景”的方式，只提供一个与系统交互的抽象层次。LLVM 中间表示（IR）大致相当于“带向量的 C”，JVM 则提供“带垃圾收集器的面向对象类型系统”这一抽象。这种方式极具价值；在实践中，从广泛使用的源语言映射到相应领域也很直接——分别是 C/C++ 到 LLVM IR、Java 到 JVM。
+
+<a id="S003"></a>
+**Source:** pp.1–2 S003
+
+**Original:** At the same time, many problems are better modeled at a higher- or lower-level abstraction, e.g. source-level analysis of C++ code is very difficult on LLVM IR. We observe that many languages (including e.g. Swift, Rust, Julia, Fortran) develop their own IR in order to solve domain-specific problems, like language/library-specific optimizations, flow-sensitive type checking (e.g. for linear types), and to improve the implementation of the lowering process. Similarly, machine learning systems typically use “ML graphs” as a domain-specific abstraction in the same way.
+
+**中文:** 与此同时，许多问题在更高或更低的抽象层次上更容易建模。例如，在 LLVM IR 上进行 C++ 源码级分析十分困难。作者观察到，许多语言——如 Swift、Rust、Julia 和 Fortran——都会开发自己的 IR，以解决领域特定问题，例如语言或库特定的优化、流敏感类型检查（如线性类型检查），并改进降低过程的实现。机器学习系统通常使用“机器学习图”作为领域专用抽象，道理也相同。
+
+<a id="S004"></a>
+**Source:** p.2 S004
+
+**Original:** While the development of domain specific IRs is a well studied art, their engineering and implementation cost remains high. The quality of the infrastructure is not always a first priority (or easy to justify) for implementers of these systems. Consequently, this can lead to lower quality compiler systems, including user-visible problems like slow compile times, buggy implementations, suboptimal diagnostic quality, poor debugging experience for optimized code, etc.
+
+**中文:** 尽管领域专用 IR 的设计已有充分研究，其工程与实现成本仍然很高。对这类系统的实现者而言，基础设施质量并不总是首要目标，也未必容易证明相关投入合理。因此，最终的编译器系统可能质量不高，并出现用户可感知的问题，例如编译缓慢、实现缺陷、诊断质量不理想，以及优化后代码难以调试等。
+
+<a id="S005"></a>
+**Source:** p.2 S005
+
+**Original:** The MLIR project aims to directly tackle these programming language design and implementation challenges—by making it very cheap to define and introduce new abstraction levels, and provide “in the box” infrastructure to solve common compiler engineering problems. MLIR does this by (1) standardizing the Static Single Assignment (SSA)-based IR data structures, (2) providing a declarative system for defining IR dialects, and (3) providing a wide range of common infrastructure (including documentation, parsing and printing logic, location tracking, multithreaded compilation support, pass management, etc).
+
+**中文:** MLIR 项目试图直接应对这些程序设计语言设计与实现挑战：让定义和引入新抽象层次的成本变得很低，并提供“开箱即用”的基础设施来解决常见编译器工程问题。其做法是：（1）标准化基于静态单赋值（SSA）的 IR 数据结构；（2）提供用于定义 IR 方言的声明式系统；（3）提供广泛的通用基础设施，包括文档、解析与打印逻辑、位置跟踪、多线程编译支持以及 Pass 管理等。
+
+<a id="S006"></a>
+**Source:** p.2 S006
+
+**Original:** This paper explores various design points of the MLIR system, relates our experience applying it to a number of different problems, and discusses implications this work may have for language design and education.
+
+**中文:** 本文考察 MLIR 系统的多个设计点，介绍作者将其用于不同问题的经验，并讨论这项工作可能对语言设计与教育产生的影响。
+
+### 1.1 贡献
+
+<a id="S007"></a>
+**Source:** p.2 S007
+
+**Original:** While most of the MLIR system is built out of well known compiler algorithms, the design points are sufficiently novel that it provides opportunities for interesting research. The contributions of this paper are:
+
+**中文:** MLIR 系统的大部分内容由已知的编译器算法构成，但其设计点足够新颖，因而带来了有趣的研究机会。本文的贡献如下：
+
+<a id="S008"></a>
+**Source:** p.2 S008
+
+**Original:**
+
+- a description of a novel compiler infrastructure with important industrial and research applications;
+- new approaches to building scalable and modular compiler systems;
+- exploration of selected applications of MLIR to diverse domains, illustrating the generality of the system;
+- shared experience developing systems that build on the MLIR infrastructure.
+
+**中文:**
+
+- 描述一种在工业和研究中具有重要应用的新型编译器基础设施；
+- 提出构建可扩展、模块化编译器系统的新方法；
+- 探索 MLIR 在不同领域中的若干应用，以说明系统的通用性；
+- 分享开发基于 MLIR 基础设施之系统的经验。
+
+### 1.2 MLIR 从何而来？
+
+<a id="S009"></a>
+**Source:** p.2 S009
+
+**Original:** Work on MLIR began with a realization that modern machine learning frameworks are composed of many different compilers, graph technologies, and runtime systems (see Figure 1)—which did not share a common infrastructure or design point, and not all of which were following best practices in compiler design. This manifested in multiple user-visible ways, including poor error messages, failures in edge cases, unpredictable performance, and difficulty generalizing the stack to support new hardware.
+
+**中文:** MLIR 工作始于这样一个认识：现代机器学习框架由许多不同的编译器、图技术和运行时系统组成（见图 1），它们既没有共享的基础设施或设计点，也并非都遵循编译器设计的最佳实践。这会以多种用户可见的方式表现出来，包括错误信息质量差、边界情形失效、性能不可预测，以及难以将整套软件栈推广到新硬件。
+
+<a id="F001"></a>
+### 图 1　TensorFlow 模型执行跨越多个框架
+
+**Placed near:** p.2 S009  
+**Source:** p.2 C001
+
+![Figure 1](assets/fig01_tensorflow_stack.png)
+
+<a id="C001"></a>
+**Original caption:** Figure 1: TensorFlow model execution spanning different frameworks.
+
+**中文图注:** 图 1：TensorFlow 模型执行跨越不同框架。
+
+**Reading note:** 图中每条路径都可能拥有独立的 IR、转换器与运行时规则。作者由此把“机器学习软件栈碎片化”概括为基础设施层面的重复建设问题。
+
+<a id="S010"></a>
+**Source:** pp.2–3 S010
+
+**Original:** We soon realized that the compiler industry as a whole has a similar problem: existing systems like LLVM are very successful at unifying and integrating work across a range of different language implementations, but modern high level languages often end up building their own high-level IR and reinventing a lot of the same kinds of technology for higher levels of abstraction (see Figure 2). At the same time, the LLVM community frequently struggled with questions about how to best represent parallel constructs, how to share implementation of common front-end lowering infrastructure (e.g. for C calling conventions, or cross-language features like OpenMP) with no satisfactory solutions being available.
+
+**中文:** 作者很快意识到，整个编译器行业也存在类似问题。LLVM 等既有系统非常成功地统一并整合了多种语言实现中的工作，但现代高级语言往往仍需构建自己的高层 IR，并在更高抽象层次上重复发明许多相同技术（见图 2）。与此同时，LLVM 社区经常苦于如何恰当地表示并行构造，以及如何共享通用前端降低基础设施的实现——例如 C 调用约定，或 OpenMP 这类跨语言特性——却一直缺少令人满意的方案。
+
+<a id="F002"></a>
+### 图 2　多语言、多级 IR 与共同后端
+
+**Placed near:** pp.2–3 S010  
+**Source:** p.3 C002
+
+![Figure 2](assets/fig02_language_pipelines.png)
+
+<a id="C002"></a>
+**Original caption:** Figure 2: Compilation pipeline of different languages with multiple mid-level IRs for language-specific optimization with common backend for multiple hardware targets.
+
+**中文图注:** 图 2：不同语言使用多个中层 IR 完成语言特定优化，并共享面向多种硬件目标的后端。
+
+**Reading note:** 图的关键不是“最终都进入 LLVM IR”，而是 LLVM IR 之前仍有大量互不共享的 AST 与中层 IR。MLIR 的设计空间正位于这些层次。
+
+<a id="S011"></a>
+**Source:** p.3 S011
+
+**Original:** Faced with this challenge and perspective, we decided that we could not afford the engineering effort to implement N improved compiler instances, and we needed to build a more general solution. We reasoned that this would give us the ability to invest in one set of high quality infrastructure which would benefit multiple domains, would allow us to progressively upgrade existing systems in place, would make it easier for us to tackle pressing problems like heterogeneous compilation for specialized accelerators, and would provide interesting research opportunities to define and explore.
+
+**中文:** 面对这一挑战，作者认为无法承担实现 N 个改进版编译器实例的工程成本，因此需要构建一种更通用的方案。这样便可以把投入集中到一套高质量基础设施上，使多个领域受益；可以原地逐步升级既有系统；更容易处理面向专用加速器的异构编译等紧迫问题；也能提供值得定义与探索的研究机会。
+
+<a id="S012"></a>
+**Source:** p.3 S012
+
+**Original:** Now that we have a significant amount of experience building and deploying MLIR-based systems, we are able to look back on the rationale and design of the infrastructure, and discuss why this direction was pursued.
+
+**中文:** 在积累了大量构建和部署 MLIR 系统的经验后，作者得以回顾这套基础设施的动机与设计，并说明为何选择这一方向。
+
+## 2 设计原则
+
+<a id="S013"></a>
+**Source:** p.3 S013
+
+**Original:** Let us now explore the requirements that guided the design of MLIR.
+
+**中文:** 下面考察指导 MLIR 设计的各项需求。
+
+<a id="S014"></a>
+**Source:** p.3 S014
+
+**Original:** **Little builtin, everything customizable.** The system is based on a minimal number of fundamental concepts, leaving most of the intermediate representation fully customizable. A handful of abstractions—types, operations and attributes, which are the most common in IRs—should be used to express everything else, allowing fewer and more consistent abstractions that are easy to comprehend, extend and adopt. Broadly, customizability ensures the system can adapt to changing requirements and is more likely to be applicable to future problems. In that sense, we ought to build an IR as a rich infrastructure with reusable components and programming abstractions supporting the syntax and semantics of its intermediate language.
+
+**中文:** **尽量少内建，一切皆可定制。** 系统只建立在极少数基本概念之上，中间表示的大部分内容都可完全定制。类型、操作和属性是 IR 中最常见的少数抽象，应当用它们表达其他一切，从而得到数量更少、更加一致，也更容易理解、扩展和采用的抽象。总体而言，可定制性使系统能够适应需求变化，也更可能适用于未来问题。由此，IR 应当被构建成一套丰富的基础设施，以可复用组件和程序设计抽象支持其中间语言的语法与语义。
+
+<a id="S015"></a>
+**Source:** p.3 S015
+
+**Original:** A success criterion for customization is the possibility to express a diverse set of abstractions including machine learning graphs, ASTs, mathematical abstractions such as polyhedral, Control Flow Graphs (CFGs) and instruction-level IRs such as LLVM IR, all without hard coding concepts from these abstractions into the system.
+
+**中文:** 可定制性是否成功，有一项判据：系统能否表达多样化抽象，包括机器学习图、抽象语法树（AST）、多面体等数学抽象、控制流图（CFG）以及 LLVM IR 这样的指令级 IR，同时又不把这些抽象中的概念硬编码进系统。
+
+<a id="S016"></a>
+**Source:** p.3 S016
+
+**Original:** Certainly, customizability creates a risk of internal fragmentation due to poorly compatible abstractions. While there is unlikely a purely technical solution to the ecosystem fragmentation problem, the system should encourage one to design reusable abstractions and assume they will be used outside of their initial scope.
+
+**中文:** 可定制性当然会带来内部碎片化风险，因为不同抽象可能兼容不佳。生态碎片化问题或许不存在纯技术性的解决方案，但系统应鼓励人们设计可复用抽象，并默认这些抽象会在最初范围之外被使用。
+
+<a id="S017"></a>
+**Source:** pp.3–4 S017
+
+**Original:** **SSA and regions.** The Static Single Assignment (SSA) form [15] is a widely used representation in compiler IRs. It provides numerous advantages including making dataflow analysis simple and sparse, is widely understood by the compiler community for its relation with continuation-passing style, and is established in major frameworks. While many existing IRs use a flat, linearized CFG, representing higher level abstractions push introducing nested regions as a first-class concept in the IR. This goes beyond the traditional region formation to lift higher level abstractions (e.g., loop trees), speeding up the compilation process or extracting instruction, or SIMD parallelism [22, 21, 37]. To support heterogeneous compilation, the system has to support the expression of structured control flow, concurrency constructs, closures in source languages, and many other purposes. One specific challenge is to make CFG-based analyses and transformations compose over nested regions.
+
+**中文:** **SSA 与区域。** 静态单赋值（SSA）形式 [15] 是编译器 IR 中广泛使用的表示。它具有多项优势：可使数据流分析简单而稀疏；由于与续延传递风格相关，编译器社区对它有广泛理解；它也已在主要框架中确立。许多既有 IR 使用扁平、线性化的 CFG，但表达高层抽象会推动系统把嵌套区域作为 IR 的一等概念。这超越了传统的区域形成，可提升循环树等高层抽象，从而加速编译，或提取指令级、SIMD 级并行性 [22, 21, 37]。为支持异构编译，系统还必须表达结构化控制流、并发构造、源语言闭包等内容。一个具体挑战，是让基于 CFG 的分析和变换能够在嵌套区域之上组合。
+
+<a id="S018"></a>
+**Source:** p.4 S018
+
+**Original:** In doing so, we aim to sacrifice the normalization, and sometimes the canonicalization properties of LLVM. Being able to lower a variety of data and control structures into a smaller collection of normalized representations is key to keeping compiler complexity under control. The canonical loop structure with its pre-header, header, latch, body, is a prototypical case of a linearized control flow representation of a variety of loop constructs in front-end languages. We aim at offering users a choice: depending on the compilation algorithm of interest, of the pass in the compilation flow, nested loops may be captured as nested regions, or as linearized control flow. By offering such a choice, we depart from the normalization-only orientation of LLVM while retaining the ability to deal with higher level abstractions when it matters. In turn, leveraging such choices raises questions about how to control the normalization of abstractions, whith is the purpose of the next paragraph.
+
+**中文:** 为此，MLIR 愿意牺牲 LLVM 的归一化特性，有时也包括规范化特性。把多样的数据结构和控制结构降低到较少的一组归一化表示，是控制编译器复杂度的关键。由前置头、头、回边块和循环体组成的规范循环结构，就是把前端语言中多种循环构造表示成线性化控制流的典型例子。MLIR 希望给用户选择：依据关注的编译算法以及编译流程中所处的 Pass，嵌套循环既可表示成嵌套区域，也可表示成线性化控制流。这个选择使 MLIR 偏离 LLVM“只做归一化”的取向，同时仍能在需要时处理高层抽象。如何控制抽象的归一化，也因此成为下一个设计问题。
+
+<a id="S019"></a>
+**Source:** p.4 S019
+
+**Original:** **Progressive lowering.** The system should support progressive lowering, i.e. from the higher-level representation down to the lowest-level, with the lowering being performed in small steps along multiple abstraction levels. The need for multiple levels of abstractions stems from the variety of platforms and programming models that a generic compiler infrastructure has to support.
+
+**中文:** **渐进式降低。** 系统应当支持从高层表示到最低层表示的渐进式降低，即沿多个抽象层次以小步完成转换。之所以需要多层抽象，是因为通用编译器基础设施必须支持多种平台和程序设计模型。
+
+<a id="S020"></a>
+**Source:** p.4 S020
+
+**Original:** Previous compilers have been introducing multiple fixed levels of abstraction in their pipeline—e.g. the Open64 WHIRL representation [30] has five levels, as does the Clang compiler which lowers from ASTs to LLVM IR, to SelectionDAG, to MachineInstr, and to MCInst. Whereas these approaches are done in a rigid way, more flexible designs are required to support extensibility.
+
+**中文:** 以往编译器会在流水线中引入多个固定抽象层次。例如，Open64 的 WHIRL 表示 [30] 有五层；Clang 也有五层，依次从 AST 降低到 LLVM IR、SelectionDAG、MachineInstr 和 MCInst。这些方式较为刚性，而支持可扩展性需要更灵活的设计。
+
+<a id="S021"></a>
+**Source:** p.4 S021
+
+**Original:** This has deep implications on the phase ordering of transformations. As compiler experts started implementing more and more transformation passes, complex interactions between these passes started appearing. It was shown early on that combining optimization passes allows the compiler to discover more facts about the program. One of the first illustrations of the benefits of combining passes was to mix constant propagation, value numbering and unreachable code elimination [13]. More generally, compiler passes can be roughly categorized into four roles: (1) optimizing transformations, (2) enabling transformations, (3) lowering and (4) cleanup. The system should allow for mixing and matching these roles at the granularity of a single operation rather than sequencing passes on the full compilation unit.
+
+**中文:** 这会深刻影响变换阶段的顺序。随着编译器专家实现越来越多的变换 Pass，Pass 之间开始出现复杂交互。早期研究已经表明，组合优化 Pass 能让编译器发现更多程序事实。组合常量传播、值编号和不可达代码消除，是最早展示这种收益的例子之一 [13]。更一般地，编译器 Pass 大致可分为四种角色：（1）优化变换；（2）使能变换；（3）降低；（4）清理。系统应允许在单个 Op 粒度上混合匹配这些角色，而不是只在整个编译单元上依次执行各 Pass。
+
+<a id="S022"></a>
+**Source:** p.4 S022
+
+**Original:** **Maintain higher-level semantics.** The system needs to retain higher-level semantics and structure of computations that are required for analysis or optimizing performance. Attempts to raise semantics once lowered are fragile and shoehorning this information into a low-level often invasive (e.g., all passes need to be verified/revisited in the case of using debug information to record structure). Instead, the system should maintain structure of computation and progressively lower to the hardware abstraction. The loss of structure is then conscious and happens only where the structure is no longer needed to match the underlying execution model. For example, the system should preserve the structured control flow such as loop structure throughout the relevant transformations; removing this structure, i.e. going to CFG-based control flow, essentially means no further transformations will be performed on this level. The state of the art in modeling parallel computing constructs in a production compiler highlights how difficult the task may be in general [23, 42].
+
+**中文:** **保留高层语义。** 系统需要保留分析或性能优化所需的高层语义与计算结构。一旦完成降低，再试图恢复语义会十分脆弱；把这些信息硬塞进低层表示通常也具有侵入性。例如，用调试信息记录结构时，所有 Pass 都必须重新验证或检查。更合适的做法是保留计算结构，并逐步降低到硬件抽象。这样，结构的丢失就是有意识的，只发生在底层执行模型不再需要该结构之处。例如，系统应在相关变换期间保留循环等结构化控制流；移除这种结构、转成基于 CFG 的控制流，实质上意味着不再在该抽象层次执行后续变换。生产级编译器对并行计算构造的最新建模工作，说明这项任务总体上非常困难 [23, 42]。
+
+<a id="S023"></a>
+**Source:** p.4 S023
+
+**Original:** As a corollary, mixing different levels of abstractions and different concepts in the same IR is a key property of the system to allow a part of the representation to remain in higher-level abstraction while another part is lowered. This would enable, for instance, a compiler for a custom accelerator to reuse some higher-level structure and abstractions defined by the system alongside with primitive scalar/vector instructions specific to the accelerator.
+
+**中文:** 由此可得一个推论：在同一 IR 中混合不同抽象层次和不同概念，是系统的一项关键性质。它允许表示的一部分保留在高层抽象，另一部分则已经降低。例如，定制加速器编译器可以复用系统定义的某些高层结构与抽象，同时使用该加速器专有的基本标量或向量指令。
+
+<a id="S024"></a>
+**Source:** p.4 S024
+
+**Original:** **IR validation.** The openness of the ecosystem calls for an extensive validation mechanism. While verification and testing are useful to detect compiler bugs, and to capture IR invariants, the need for robust validation methodologies and tools is amplified in an extensible system. The mechanism should aim to make this easy to define and as declarative as practical, providing a single source of truth.
+
+**中文:** **IR 验证。** 开放生态需要广泛的验证机制。验证和测试可用于发现编译器缺陷并捕获 IR 不变量；在可扩展系统中，对稳健验证方法与工具的需求更为强烈。验证机制应尽量便于定义、尽可能声明化，并提供唯一事实来源。
+
+<a id="F003"></a>
+### 图 3　Op、区域和块形成递归结构
+
+**Placed near:** p.4 S024  
+**Source:** p.5 C003
+
+![Figure 3](assets/fig03_operation_regions.png)
+
+<a id="C003"></a>
+**Original caption:** Figure 3: Operation (Op) is a main entity in MLIR; operations contain a list of regions, regions contain a list of blocks, blocks contains a list of Ops, enabling recursive structures.
+
+**中文图注:** 图 3：操作（Op）是 MLIR 的主要实体；Op 包含区域列表，区域包含块列表，块又包含 Op 列表，从而形成递归结构。
+
+**Reading note:** MLIR 并非“指令线性列表加少量附加结构”。Op—region—block—Op 的递归关系，是它同时表达函数、循环、闭包和图计算等结构的核心。
+
+<a id="S025"></a>
+**Source:** p.5 S025
+
+**Original:** A long term goal would be to reproduce the successes of translation validation [35, 29, 50, 51] and modern approaches to compiler testing [12]. Both are currently open problems in the context of an extensible compiler ecosystem.
+
+**中文:** 一个长期目标，是在 MLIR 中重现翻译验证 [35, 29, 50, 51] 和现代编译器测试方法 [12] 已取得的成功。二者在可扩展编译器生态中目前都还是开放问题。
+
+<a id="S026"></a>
+**Source:** p.5 S026
+
+**Original:** **Declarative rewrite patterns.** Defining representation modifiers should be as simple as that of new abstractions; a compiler infrastructure is only as good as the transformations it supports. Common transformations should be implementable as rewrite rules expressed declaratively, in a machine-analyzable format to reason about properties of the rewrites such as complexity and completion. Rewriting systems have been studied extensively for their soundness and efficiency, and applied to numerous compilation problems, from type systems to instruction selection. Since we aim for unprecedented extensibility and incremental lowering capabilities, this opens numerous avenues for modeling program transformations as rewrite systems. It also raises interesting questions about how to represent the rewrite rules and strategies, and how to build machine descriptions capable of steering rewriting strategies through multiple levels of abstraction. The system needs to address these questions while preserving extensibility and enforcing a sound, monotonic and reproducible behavior.
+
+**中文:** **声明式重写模式。** 定义表示修改器应当像定义新抽象一样简单；编译器基础设施的能力不会超过它所支持的变换。常见变换应能实现为声明式重写规则，并采用机器可分析的格式，以便推理复杂度、终止性等性质。重写系统的可靠性和效率已有广泛研究，也已用于从类型系统到指令选择的多种编译问题。MLIR 追求前所未有的可扩展性和增量降低能力，这为把程序变换建模成重写系统开辟了许多路径，同时也提出了有趣问题：如何表示重写规则与策略，以及如何构建能够引导重写策略穿过多个抽象层次的机器描述。系统必须在保留可扩展性的同时，保证可靠、单调且可复现的行为。
+
+<a id="S027"></a>
+**Source:** p.5 S027
+
+**Original:** **Source location tracking and traceability.** The provenance of an operation—including its original location and applied transformations—should be easily traceable within the system. This intends to address the lack-of-transparency problem, common to complex compilation systems, where it is virtually impossible to understand how the final representation was constructed from the original one. This is particularly problematic when compiling safety-critical and sensitive applications, where tracing lowering and optimization steps is an essential component of software certification procedures [43]. When operating on secure code such as cryptographic protocols or algorithms operating on privacy-sensitive data, the compiler often faces seemingly redundant or cumbersome computations that embed a security or privacy property not fully captured by the functional semantics of the source program: this code may prevent the exposure of side channels or harden the code against cyber or fault attacks. Optimizations may alter or completely invalidate such protections [56]; this lack of transparency is known as WYSINWYX [6] in secure compilation. One indirect goal of accurately propagating high-level information to the lower levels is to help support secure and traceable compilation.
+
+**中文:** **源位置跟踪与可追溯性。** 系统应能轻松追踪 Op 的来源，包括原始位置以及曾施加的变换。这是为了解决复杂编译系统中常见的不透明问题：人们几乎无法理解最终表示是如何由原始表示构造出来的。编译安全关键或敏感应用时，这个问题尤其严重，因为追踪降低与优化步骤是软件认证流程的重要部分 [43]。处理密码协议或操作隐私敏感数据的算法等安全代码时，编译器经常遇到看似冗余或繁琐的计算；这些计算包含未被源程序函数语义充分捕获的安全或隐私性质，例如用于防止侧信道暴露，或增强代码抵御网络攻击、故障攻击的能力。优化可能改变甚至彻底破坏这些保护 [56]；在安全编译中，这种不透明性称为 WYSINWYX [6]。把高层信息准确传播到低层，还有一个间接目标：帮助实现安全且可追溯的编译。
+
+## 3 IR 设计细节
+
+<a id="S028"></a>
+**Source:** p.5 S028
+
+**Original:** This section describes the design of the IR in MLIR following the principles from the previous section.
+
+**中文:** 本节依照上一节的原则，介绍 MLIR 中 IR 的具体设计。
+
+<a id="F004"></a>
+### 图 4　使用 affine 与 std 方言表示多项式乘法
+
+**Placed near:** p.5 S028  
+**Source:** p.6 C004
+
+![Figure 4](assets/fig04_polynomial_generic_ir.png)
+
+<a id="C004"></a>
+**Original caption:** Figure 4: MLIR generic representation for polynomial multiplication using affine and std dialects. The same IR is displayed with the custom syntax Figure 8.
+
+**中文图注:** 图 4：使用 affine 与 std 方言表示多项式乘法的 MLIR 通用形式。图 8 使用自定义语法展示同一 IR。
+
+**Reading note:** 通用形式显式展示 Op 名称、操作数、结果类型、属性、区域与终结 Op，适合基础设施处理；图 8 的自定义语法则面向人类可读性。两者必须可无损往返。
+
+<a id="S029"></a>
+**Source:** p.6 S029
+
+**Original:** **Operations.** The unit of semantics in MLIR is an “operation”, referred to as Op. Everything from “instruction” to “function” to “module” are modeled as Ops in this system. MLIR does not have a fixed set of Ops, but allows (and encourages) user-defined extensions—compiler passes treat unknown Ops conservatively, and MLIR has rich support for describing the semantics of Ops to passes through traits, privileged operation hooks and optimization interfaces as described in Section 6.1.
+
+**中文:** **操作。** MLIR 的语义单位是“操作”，简称 Op。从“指令”到“函数”再到“模块”，在该系统中都建模为 Op。MLIR 没有固定的 Op 集合，而是允许并鼓励用户定义扩展。编译器 Pass 会保守处理未知 Op；如第 6.1 节所述，MLIR 还可通过特征、特权操作钩子和优化接口，向 Pass 描述 Op 的语义。
+
+<a id="S030"></a>
+**Source:** p.6 S030
+
+**Original:** Ops (see Figure 3) have a unique opcode, which, textually, is a string identifying its dialect and the operation. Ops take and produce zero or more values, called operands and results respectively, and these are maintained in SSA form. All values have a type, similarly to LLVM IR. In addition to an opcode, operands and results, Ops may also have Attributes, Regions, Block Arguments, and Location Information as well. Figure 4 illustrates values and Ops, %-identifiers are (packs of) named values, with “:” specifying the number in a pack if more than one and “#” a particular value. In the generic textual representation, operation names are quoted string literals followed by operands in parentheses.
+
+**中文:** Op（见图 3）具有唯一操作码；在文本中，该操作码是标识所属方言和具体操作的字符串。Op 接受零个或多个值，并产生零个或多个值，二者分别称为操作数和结果，且均维持在 SSA 形式中。与 LLVM IR 类似，所有值都有类型。除操作码、操作数和结果外，Op 还可拥有属性、区域、块参数和位置信息。图 4 展示了值和 Op：以 % 开头的标识符表示一个或一组具名值；若一组中包含多个值，“:” 后给出数量，“#” 则选定其中某个值。在通用文本表示中，操作名是带引号的字符串字面量，后接括号中的操作数。
+
+<a id="S031"></a>
+**Source:** p.6 S031
+
+**Original:** **Attributes.** An MLIR attribute is structured compile-time static information, e.g., integer constant values, string data, or a list of constant floating point values. Attributes are typed, and each Op instance has an open key-value dictionary from string names to attribute values. In the generic syntax, attributes are between the Op operands and its type as a brace-enclosed comma-separated list of key-value pairs. For example, Figure 4 uses attributes to define bounds of a loop that are known to be constant affine forms: {lower_bound = () -> (0), step = 1 : index, upper_bound = #map3} where lower_bound, upper_bound and step are attribute names. The () -> (0) notation is used for inline affine forms, in this case producing an affine function producing a constant 0 value. The #map3 notation is used for attribute aliases, which allow one to associate an attribute value with a label upfront and use the label anywhere an attribute value is expected.
+
+**中文:** **属性。** MLIR 属性是结构化的编译期静态信息，例如整数常量、字符串数据或浮点常量列表。属性自身带类型；每个 Op 实例都有一个开放的键值字典，把字符串名称映射到属性值。在通用语法中，属性位于 Op 的操作数与类型之间，以花括号包围、逗号分隔的键值对列表表示。例如，图 4 用属性定义已知为常量仿射形式的循环边界：{lower_bound = () -> (0), step = 1 : index, upper_bound = #map3}，其中 lower_bound、upper_bound 和 step 是属性名。() -> (0) 表示内联仿射形式，此处得到产生常量 0 的仿射函数。#map3 表示属性别名，可预先把属性值与标签关联，再在任何需要该属性值的位置使用标签。
+
+<a id="S032"></a>
+**Source:** pp.6–7 S032
+
+**Original:** As with opcodes, there is no fixed set of attributes. Attributes derive their meaning either from the Op semantics or from the dialect they are associated with. Attributes are also extensible, allowing direct references to foreign data structures, which is useful for integrating with existing systems. For example, an attribute may refer to the contents of (known at compile time) data storage in an ML system.
+
+**中文:** 与操作码一样，属性也没有固定集合。属性的含义来自 Op 语义，或来自与其关联的方言。属性同样可扩展，并允许直接引用外部数据结构，这有利于集成既有系统。例如，一个属性可以引用机器学习系统中编译期已知的数据存储内容。
+
+<a id="S033"></a>
+**Source:** p.7 S033
+
+**Original:** **Location information.** MLIR provides a compact representation for location information, and encourages the processing and propagation of this information throughout the system. It can be used to keep the source program stack trace that produced an Op, to generate debug information. It standardizes the way to emit diagnostics from the compiler, and is used by a wide range of testing tools.
+
+**中文:** **位置信息。** MLIR 为位置信息提供紧凑表示，并鼓励在整个系统中处理和传播这些信息。位置信息可以保留产生某个 Op 的源程序栈轨迹，用于生成调试信息；它还标准化了编译器发出诊断的方式，并被多种测试工具使用。
+
+<a id="S034"></a>
+**Source:** p.7 S034
+
+**Original:** Location information is also extensible, allowing a compiler to refer to existing location tracking systems, high-level AST nodes, LLVM-style file-line-column address, DWARF debugging info or whatever else is needed for a high quality implementation.
+
+**中文:** 位置信息同样可扩展，允许编译器引用既有位置跟踪系统、高层 AST 节点、LLVM 风格的文件—行—列地址、DWARF 调试信息，或高质量实现所需的其他信息。
+
+<a id="S035"></a>
+**Source:** p.7 S035
+
+**Original:** **Regions and blocks.** An instance of an Op may have a list of attached regions. A region provides the mechanism for nested structure in MLIR: a region contains a list of blocks, and a block contains a list of operations (which may contain regions). As with attributes, the semantics of a region are defined by the operation they are attached to, however the blocks inside the region (if more than one) form a Control Flow Graph (CFG). For example, the affine.for operation in Figure 4 is a loop with the single-block body attached as a region, located between ({ and }) delimiters. The Op specifies the flow of control across regions. In this example, the body is executed repeatedly until the upper bound is reached.
+
+**中文:** **区域与块。** 一个 Op 实例可附带区域列表。区域为 MLIR 提供嵌套结构机制：区域包含块列表，块包含操作列表，而这些操作又可包含区域。与属性类似，区域的语义由其附着的 Op 定义；不过，当区域内有多个块时，这些块会形成控制流图（CFG）。例如，图 4 的 affine.for Op 是一个循环，其单块循环体作为区域附着在 Op 上，位于 ({ 与 }) 分隔符之间。Op 规定跨区域的控制流；在该例中，循环体重复执行，直到达到上界。
+
+<a id="S036"></a>
+**Source:** p.7 S036
+
+**Original:** The body of each region is a list of blocks, and each block ends with a terminator operation, that may have successor blocks to which the control flow may be transferred. Each terminator (e.g. “switch”, “conditional branch” or “unwind”) defines its own semantics. It may chose to transfer the control flow to another block in the same region, or return it to the Op enclosing the region. The graph of successors defines a CFG, allowing standard SSA-based control flow within a region.
+
+**中文:** 每个区域的主体都是块列表，每个块以终结 Op 结束；终结 Op 可以带有控制流将转移到的后继块。每种终结 Op——例如 switch、条件分支或 unwind——都定义自己的语义。它可以把控制流转移到同一区域中的另一块，也可以把控制返回给包围该区域的 Op。由后继关系构成的图定义了 CFG，使区域内部可以使用标准的 SSA 控制流。
+
+<a id="S037"></a>
+**Source:** p.7 S037
+
+**Original:** Instead of using φ nodes, MLIR uses a functional form of SSA [2] where terminators pass values into block arguments defined by the successor block. Each block has a (potentially empty) list of typed block arguments, which are regular values and obey SSA. The semantics of terminator Ops defines what values the arguments of the block will take after the control is transferred. For the first (entry) block of the region, the values are defined by the semantics of the enclosing Op. For example, affine.for uses the entry block argument %arg4 as loop induction variable.
+
+**中文:** MLIR 不使用 φ 节点，而采用函数式 SSA [2]：终结 Op 把值传给后继块定义的块参数。每个块都拥有一个可能为空的、带类型的块参数列表；这些参数是普通值并遵循 SSA。终结 Op 的语义决定控制转移后块参数将取得哪些值。区域的第一个入口块，其参数值由包围区域的 Op 语义定义。例如，affine.for 使用入口块参数 %arg4 作为循环归纳变量。
+
+<a id="S038"></a>
+**Source:** p.7 S038
+
+**Original:** **Value dominance and visibility.** Ops can only use values that are in scope, i.e. visible according to SSA dominance, nesting, and semantic restrictions imposed by enclosing operations. Values are visible within a CFG if they obey standard SSA dominance relationships, where control is guaranteed to pass through a definition before reaching a use.
+
+**中文:** **值的支配关系与可见性。** Op 只能使用作用域内的值，即依照 SSA 支配关系、嵌套关系以及包围 Op 所施加的语义限制而可见的值。在 CFG 内，如果一个值遵守标准 SSA 支配关系——控制流在到达使用点前必然经过定义点——该值就是可见的。
+
+<a id="S039"></a>
+**Source:** p.7 S039
+
+**Original:** Region-based visibility is defined based on simple nesting of regions: if the operand to an Op is outside the current region, then it must be defined lexically above and outside the region of the use. This is what allows Ops within an affine.for operation to use values defined in outer scopes.
+
+**中文:** 基于区域的可见性由区域的简单嵌套关系定义：如果一个 Op 的操作数来自当前区域之外，那么它必须在词法位置上定义于使用区域的上方和外部。因此，affine.for 内部的 Op 可以使用外层作用域定义的值。
+
+<a id="S040"></a>
+**Source:** p.7 S040
+
+**Original:** MLIR also allows operations to be defined as isolated from above, indicating that the operation is a scope barrier—e.g. the “std.func” Op defines a function, and it is not valid for operations within the function to refer to values defined outside the function. In addition to providing useful semantic checking, a module containing isolated-from-above Ops may be processed in parallel by an MLIR compiler since no use-def chains may cross the isolation barriers. This is a important for compilation to utilize multicore machines.
+
+**中文:** MLIR 还允许把 Op 定义为“与上层隔离”（isolated from above），表示该 Op 是作用域屏障。例如，std.func Op 定义一个函数，函数内部的 Op 不得引用函数外部定义的值。除提供有用的语义检查外，包含这类 Op 的模块还可由 MLIR 编译器并行处理，因为使用—定义链不能跨越隔离屏障。这对于让编译利用多核机器十分重要。
+
+<a id="S041"></a>
+**Source:** p.7 S041
+
+**Original:** **Symbols and symbol tables.** Ops can have a symbol table attached. This table is a standardized way of associating names, represented as strings, to IR objects, called symbols. The IR does not prescribe what symbols are used for, leaving it up to the Op definition. Symbols are most useful for named entities need not obey SSA: they cannot be redefined within the same table, but they can be used prior to their definition. For example, global variables, functions or named modules can be represented as symbols. Without this mechanism, it would have been impossible to define, e.g., recursive function referring to themselves in their definition. Symbol tables can be nested if an Op with a symbol table attached has associated regions containing similar Ops. MLIR provides a mechanism to reference symbols from an Op, including nested symbols.
+
+**中文:** **符号与符号表。** Op 可以附带符号表。符号表以标准化方式把字符串名称与称为符号的 IR 对象关联起来。IR 不规定符号的用途，而由 Op 定义决定。符号最适合表示无需遵守 SSA 的具名实体：同一符号表中不能重复定义，但可在定义前使用。例如，全局变量、函数或具名模块都可表示为符号。没有这一机制，就无法定义在自身定义中引用自己的递归函数。若带符号表的 Op 所关联区域中还包含类似 Op，符号表可以嵌套。MLIR 还提供从 Op 引用符号的机制，包括嵌套符号。
+
+<a id="S042"></a>
+**Source:** p.8 S042
+
+**Original:** **Dialects.** MLIR manages extensibility using Dialects, which provide a logical grouping of Ops, attributes and types under a unique namespace. Dialects themselves do not introduce any new semantics but serve as a logical grouping mechanism and can be used to provide dialect generic Op support (e.g., constant folding behavior for all ops in the dialect). The dialect namespace appears as a dot-separated prefix in the opcode, e.g., Figure 4 uses affine and std dialects.
+
+**中文:** **方言。** MLIR 使用方言管理可扩展性。方言把 Op、属性和类型按逻辑归入唯一命名空间。方言本身不引入新语义，只是一种逻辑分组机制；它也可为方言内的 Op 提供通用支持，例如为该方言中的所有 Op 提供常量折叠行为。方言命名空间在操作码中表现为由点号分隔的前缀；例如图 4 使用 affine 与 std 方言。
+
+<a id="S043"></a>
+**Source:** p.8 S043
+
+**Original:** The separation of Ops, types and attributes into dialects is conceptual and is akin to designing a set of modular libraries. For example, a dialect can contain Ops and types for operating on hardware vectors (e.g., shuffle, insert/extract element, mask), and another dialect can contain Ops and types for operating on algebraic vectors (e.g. absolute value, dot product, etc.). Whether both dialects use the same vector type and where does this type belong are design decisions left to the user of MLIR.
+
+**中文:** 把 Op、类型和属性划分到方言中，是一种概念组织方式，类似于设计一组模块化程序库。例如，一个方言可包含操作硬件向量的 Op 与类型，如 shuffle、元素插入／提取和 mask；另一方言则可包含操作代数向量的 Op 与类型，如绝对值、点积等。两个方言是否共用同一种向量类型，以及该类型属于哪个方言，都由 MLIR 用户决定。
+
+<a id="S044"></a>
+**Source:** p.8 S044
+
+**Original:** While it is possible to put all Ops, types and attributes in a single dialect, it would quickly become unmanageable due to the large number of simultaneously present concepts and name conflicts, amongst other issues. Although each Op, type and attribute belongs to exactly one dialect, MLIR explicitly supports a mix of dialects to enable progressive lowering. Ops from different dialects can coexist at any level of the IR at any time, they can use types defined in different dialects, etc. Intermixing of dialects allows for greater reuse, extensibility and provides flexibility that otherwise would require developers to resort to all kinds of non-composable workarounds.
+
+**中文:** 虽然可以把所有 Op、类型和属性都放进一个方言，但大量概念同时存在、名称冲突等问题会很快使其难以管理。每个 Op、类型和属性虽然只属于一个方言，MLIR 却明确支持混合方言，以实现渐进式降低。来自不同方言的 Op 可在任意时间共存于 IR 的任意层次，也可使用其他方言定义的类型。方言混合带来更强的复用性、可扩展性与灵活性；若无此机制，开发者只能采用各种不可组合的变通方法。
+
+<a id="S045"></a>
+**Source:** p.8 S045
+
+**Original:** **Type system.** Each value in MLIR has a type, which is specified in the Op that produces the value or in the block that defines the value as an argument. Types provide compile-time semantics for the IR. The type system in MLIR is user-extensible, and may refer to existing foreign type systems (e.g. an llvm::Type or a clang::Type). MLIR enforces strict type equality checking and does not provide type conversion rules. Ops list their inputs and result types using trailing function-like syntax. In Figure 4, std.load maps from the memory reference and index types to the type of the value it loads.
+
+**中文:** **类型系统。** MLIR 中每个值都有类型，该类型由产生此值的 Op 指定，或由把此值定义为参数的块指定。类型为 IR 提供编译期语义。MLIR 类型系统可由用户扩展，也可引用既有外部类型系统，例如 llvm::Type 或 clang::Type。MLIR 强制进行严格的类型相等检查，不提供类型转换规则。Op 使用尾随的类函数语法列出输入类型和结果类型。在图 4 中，std.load 从内存引用类型和索引类型映射到所加载值的类型。
+
+<a id="S046"></a>
+**Source:** p.8 S046
+
+**Original:** From the type theory point of view, MLIR only supports non-dependent types, including trivial, parametric, function, sum and product types. While it is possible to implement a dependent type system by combining Ops with symbols and user-defined types in a literal interpretation of Curry-Howard isomorphism, such types will be opaque to the IR.
+
+**中文:** 从类型论角度看，MLIR 只支持非依赖类型，包括平凡类型、参数化类型、函数类型、和类型与积类型。虽然可以按 Curry–Howard 同构的字面解释，把 Op、符号和用户定义类型结合起来实现依赖类型系统，但这类类型对 IR 而言是不透明的。
+
+<a id="S047"></a>
+**Source:** p.8 S047
+
+**Original:** **Standard types.** In addition, MLIR provides a standardized set of commonly used types, including arbitrary precision integers, standard floating point types, and simple common containers—tuples, multi-dimensional vectors, and tensors. These types are merely a convenience that are useful to authors of dialects, but their use is not required.
+
+**中文:** **标准类型。** MLIR 还提供一组标准化的常用类型，包括任意精度整数、标准浮点类型，以及元组、多维向量和张量等简单通用容器。这些类型只是为方言作者提供便利，并非强制使用。
+
+<a id="S048"></a>
+**Source:** p.8 S048
+
+**Original:** **Functions and modules.** Similarly to conventional IRs, MLIR is usually structured into functions and modules. However, these are not new or separate concepts in MLIR: they are implemented as Ops in the builtin dialect.
+
+**中文:** **函数与模块。** 与常规 IR 类似，MLIR 通常组织成函数和模块。但它们在 MLIR 中不是新增或独立概念，而是实现为内建方言中的 Op。
+
+<a id="S049"></a>
+**Source:** p.8 S049
+
+**Original:** A module is an Op with a single region containing a single block, and terminated by a dummy Op that does not transfer the control flow. A module defines a symbol and can be referenced. Like any block, its body contains a list of Ops, which may be functions, global variables, compiler metadata, or other top-level constructs.
+
+**中文:** 模块是一种 Op：它有一个只包含单个块的区域，并由不转移控制流的虚拟 Op 终结。模块定义一个可被引用的符号。与任何块一样，其主体包含 Op 列表；这些 Op 可以是函数、全局变量、编译器元数据或其他顶层构造。
+
+<a id="S050"></a>
+**Source:** p.8 S050
+
+**Original:** A function is an Op with a single region, with arguments corresponding to function arguments. It defines a symbol and can be referenced by name. The control flow is transferred into a function using a function call Op. Once inside, the control flow follows the CFG of the blocks in the region. A “return” terminator does not have successors and instead terminates the region execution, transferring the control flow back to the call-site of the function. Any operands of the “return” terminator Op are the returned values of the function.
+
+**中文:** 函数也是一种带单个区域的 Op，其区域参数对应函数参数。函数定义一个符号，可通过名称引用。函数调用 Op 把控制流转入函数；进入函数后，控制流沿区域内各块组成的 CFG 运行。return 终结 Op 没有后继，而是终止区域执行，并把控制流送回函数调用点。return 终结 Op 的操作数就是函数返回值。
+
+## 4 IR 基础设施
+
+<a id="S051"></a>
+**Source:** p.8 S051
+
+**Original:** Beyond the IR itself, MLIR provides infrastructure for defining IR elements such as dialects, Ops, pattern rewrites, verification and reusable passes. The infrastructure aspect of MLIR is essential for providing extensibility and ease of use when defining new abstractions and using MLIR as an optimization toolkit.
+
+**中文:** 除 IR 本身外，MLIR 还提供基础设施，用于定义方言、Op、模式重写、验证器和可复用 Pass 等 IR 元素。无论是定义新抽象，还是把 MLIR 用作优化工具箱，其基础设施都是实现可扩展性和易用性的关键。
+
+### 4.1 操作描述
+
+<a id="S052"></a>
+**Source:** p.9 S052
+
+**Original:** MLIR uses TableGen-based [47] specification for Operation Descriptions (ODS), defining the structure of an Op and components of its verifier declaratively. TableGen is a data modeling tool intended to help define and maintain records of domain-specific information, used extensively in LLVM. We chose it for modeling Ops and rewrite patterns to leverage its acceptance by the industry. ODS can be seen as a DSL for MLIR Op definition embedded into the TableGen input language, so the ODS syntax is imposed by TableGen, but the MLIR-specific semantics is provided by ODS. The ODS definition is ultimately translated into C++ code (including Op classes with named accessors, verification, etc.) which interoperate with the rest of the system.
+
+**中文:** MLIR 使用基于 TableGen [47] 的操作描述规约（ODS），以声明方式定义 Op 结构及其验证器的组成部分。TableGen 是一种数据建模工具，用于帮助定义和维护领域特定信息记录，并在 LLVM 中得到广泛使用。作者选择它来建模 Op 与重写模式，是为了利用其工业接受度。ODS 可视为嵌入 TableGen 输入语言的 MLIR Op 定义领域专用语言（DSL）：语法由 TableGen 规定，MLIR 特有语义则由 ODS 提供。ODS 定义最终会转换为可与系统其他部分互操作的 C++ 代码，包括带具名访问器和验证逻辑的 Op 类等。
+
+<a id="F005"></a>
+### 图 5　用 ODS 简洁定义新 Op
+
+**Placed near:** p.9 S052  
+**Source:** p.9 C005
+
+![Figure 5](assets/fig05_ods_definition.png)
+
+<a id="C005"></a>
+**Original caption:** Figure 5: Operation Definition Syntax (ODS) provides a concise way of defining new Ops in MLIR. Here, one defines the LeakyRelu Op taking a tensor and a floating-point value, and returning a tensor of the same type as the input one.
+
+**中文图注:** 图 5：操作定义语法（ODS）为 MLIR 新 Op 提供简洁定义方式。此处定义的 LeakyRelu Op 接受一个张量和一个浮点值，返回与输入张量同类型的张量。
+
+**Reading note:** 一个定义同时携带名称、特征、摘要、详细说明、参数、属性与结果。后续验证代码、访问器和文档由同一来源生成，减少手写样板与事实漂移。
+
+<a id="S053"></a>
+**Source:** p.9 S053
+
+**Original:** Ops are modeled in ODS using the TableGen Op class. Figure 5 shows an example of Op ODS definition. Each defined Op has a name which is a unique identifier, a list of traits that describe Op properties, a list of arguments that specify Op’s operands and attributes, and a list of Op’s results. Arguments and results have names and type constraints (e.g., fixed-shape tensor of float or int32). Op definition may also specify human readable Op description for the documentation, and a (limited) custom textual form for which custom printer/parser will be generated. When Op definition requires finer-grain control than ODS provides, additional C++ code can be injected via builder, printer, parser, verifier clauses. Op traits can be generic, e.g., “has no side-effects”, and dialect- or ODS-specific, e.g., “has custom exporter”. Traits in ODS may be backed by C++ classes defining the behavior of the trait. There is no fixed set of traits, but some traits are known by ODS (e.g., “shape result and operand type” represents a constraint that fully captures the output type given input types) or optimizers (e.g., “has no side-effects”, see Section 6.1).
+
+**中文:** ODS 使用 TableGen 的 Op 类对 Op 建模，图 5 给出一个定义示例。每个 Op 都有作为唯一标识符的名称、描述 Op 性质的特征列表、指定操作数和属性的参数列表，以及结果列表。参数和结果都有名称及类型约束，例如固定形状的 float 或 int32 张量。Op 定义还可包含供文档使用的人类可读说明，以及一种受限的自定义文本形式，系统会为其生成定制打印器和解析器。当 Op 定义需要比 ODS 更细的控制时，可通过 builder、printer、parser、verifier 子句注入额外 C++ 代码。Op 特征既可以是“无副作用”这样的通用特征，也可以是“具有自定义导出器”这样的方言或 ODS 特有特征。ODS 特征背后可由 C++ 类定义其行为。特征集合并不固定，但有些特征会被 ODS 识别，例如“结果与操作数形状类型一致”可在给定输入类型后完全约束输出类型；另一些则会被优化器识别，例如“无副作用”（见第 6.1 节）。
+
+<a id="S054"></a>
+**Source:** p.9 S054
+
+**Original:** Type constraints check properties of the type of arguments/results and are user/dialect extensible. MLIR infrastructure also provides numerous pre-defined type constraints, such as “any type”, “tensor with element satisfying the given constraint”, “vector of given rank”, etc. ODS also has limited support for automatically deducing the return type of results of operands using the constraints induced by the traits, see Section 4.2 for more information.
+
+**中文:** 类型约束检查参数和结果的类型性质，并可由用户或方言扩展。MLIR 基础设施还提供许多预定义类型约束，例如“任意类型”“元素满足给定约束的张量”“给定秩的向量”等。ODS 也能有限地利用特征所引入的约束，自动推导 Op 结果的返回类型；更多信息见第 4.2 节。
+
+### 4.2 声明式重写
+
+<a id="S055"></a>
+**Source:** pp.9–10 S055
+
+**Original:** Many MLIR transformations involve Op manipulations, and while some transformations require complex modifications of the IR, many others can be expressed as simple rewrites on the DAG defined by SSA use-def relations. MLIR provides a graph rewriting framework complemented with the Declarative Rewrite Rule (DRR) system that makes it simple to express patterns.
+
+**中文:** 许多 MLIR 变换都涉及操纵 Op。有些变换需要对 IR 做复杂修改，但还有许多变换可以表示成对 SSA 使用—定义关系所确定的有向无环图（DAG）的简单重写。MLIR 提供图重写框架，并以声明式重写规则（DRR）系统作为补充，使模式表达更加简单。
+
+<a id="S056"></a>
+**Source:** p.10 S056
+
+**Original:** Similarly to ODS, DRR is a DSL embedded into the TableGen language. DRR expresses source and target DAG patterns along with constraints (including dynamic constraints [49]) and benefits for pattern prioritization. Patterns can capture and reuse arguments of an Op. Conceptually, DRR expresses equivalence of DAGs under specific constraints. Figure 6 gives an example of a DRR pattern that converts an Op defined in Figure 5 into common lower-level implementation consisting of a compare and a select.
+
+**中文:** 与 ODS 类似，DRR 也是嵌入 TableGen 语言的 DSL。DRR 表达源 DAG 模式、目标 DAG 模式、约束——包括动态约束 [49]——以及用于模式优先级排序的收益值。模式可以捕获并复用 Op 参数。从概念上说，DRR 表达的是特定约束下两个 DAG 的等价性。图 6 给出一个 DRR 模式，把图 5 定义的 Op 转换为由比较和选择组成的通用低层实现。
+
+<a id="F006"></a>
+### 图 6　LeakyRelu 的声明式图重写
+
+**Placed near:** p.10 S056  
+**Source:** p.10 C006
+
+![Figure 6](assets/fig06_drr_pattern.png)
+
+<a id="C006"></a>
+**Original caption:** Figure 6: Declarative graph rewrite rule transforming a LeakyRelu into a Compare-Float, followed by a Select.
+
+**中文图注:** 图 6：声明式图重写规则，把 LeakyRelu 转换成浮点比较，再接一个 Select。
+
+**Reading note:** 规则左侧匹配 LeakyReluOp，右侧构造 CmpFOp、常量 0 与 SelectOp。它展示了“逐 Op、小模式、可组合”的变换风格，而不是把整个降低写成一个大 Pass。
+
+<a id="S057"></a>
+**Source:** p.10 S057
+
+**Original:** DRR is converted into C++ code, which can be intermixed with more complex patterns defined directly in C++ using the generic graph rewriting framework. This ability allows MLIR to keep the common case simple without restricting generality of the framework.
+
+**中文:** DRR 会转换为 C++ 代码，并可与直接使用通用图重写框架、以 C++ 定义的复杂模式混合。这使 MLIR 能保持常见情形简单，同时不限制框架的通用性。
+
+### 4.3 Pass 管理器
+
+<a id="S058"></a>
+**Source:** p.10 S058
+
+**Original:** The MLIR pass manager organizes and handles the efficient execution of a series of IR passes operating on various granularities. Whereas pass management in existing systems is typically defined over a fixed granularity (e.g., module, function or loop pass managers), in MLIR modules and functions are not special—they are merely Ops with regions and there can be multiple variants of them. Therefore, the MLIR pass manager is also not specialized on a fixed set of ops, but instead works on arbitrary Ops at arbitrary levels of nesting.
+
+**中文:** MLIR Pass 管理器组织并高效执行一系列作用于不同粒度的 IR Pass。既有系统的 Pass 管理通常针对固定粒度定义，例如模块、函数或循环 Pass 管理器；而在 MLIR 中，模块和函数并不特殊，它们只是带区域的 Op，而且可以存在多种变体。因此，MLIR Pass 管理器也不专门针对某组固定 Op，而是可以作用于任意嵌套层次上的任意 Op。
+
+<a id="S059"></a>
+**Source:** p.10 S059
+
+**Original:** **Parallel compilation.** An important requirement of MLIR is the need to utilize multi-core machines for faster compilation. The pass manager supports concurrent traversal and modification of the intermediate representation, which is made possible by invariants provided by “isolated-from-above” property of operations, because the SSA use-def chains cannot cross the region boundaries of these ops. Operations with this behavior (e.g. the “std.func” operation) thus define a tree of regions that may be processed in parallel.
+
+**中文:** **并行编译。** MLIR 的一项重要需求，是利用多核机器加快编译。Pass 管理器支持并发遍历和修改中间表示；这是由 Op 的“与上层隔离”性质所提供的不变量实现的，因为 SSA 使用—定义链不能跨越这类 Op 的区域边界。具备这种行为的 Op（如 std.func）因而定义出一棵可以并行处理的区域树。
+
+<a id="S060"></a>
+**Source:** p.10 S060
+
+**Original:** This requirement is the reason why (in contrast to, for example, LLVM), MLIR does not feature whole-module use-def chains. Global objects are referenced through symbol table entries, and constants are implemented as operations with associated attributes.
+
+**中文:** 正是这一需求使 MLIR 不提供整模块使用—定义链，这一点与 LLVM 等系统不同。全局对象通过符号表项引用，常量则实现为带关联属性的 Op。
+
+### 4.4 可往返的文本 IR 形式
+
+<a id="S061"></a>
+**Source:** pp.10–11 S061
+
+**Original:** The IR and Ops in MLIR have a textual representation that fully reflects the in-memory representation, which is critical for debugging, understanding the IR during transformations, and for writing test cases. The raw IR form shown in Figure 4 is verbose and difficult to understand. Therefore MLIR allows for defining custom printing and parsing formats for Ops, which allows the example to be printed and parsed as shown in Figure 8, which is much easier to work with.
+
+**中文:** MLIR 的 IR 和 Op 都有完整反映内存表示的文本形式。这对于调试、理解变换过程中的 IR 以及编写测试用例至关重要。图 4 所示原始 IR 形式冗长且难以理解，因此 MLIR 允许为 Op 定义自定义打印与解析格式，使同一个示例能按图 8 所示形式打印和解析，从而更易使用。
+
+<a id="S062"></a>
+**Source:** p.11 S062
+
+**Original:** Both forms are fully round-trippable and each compiler pass may be tested separately, using the textual form as both input and output. Since there is no hidden state, the result of running an individual pass is identical to running the same pass in the full pass pipeline. This approach is user-friendly, as the IR form can be created by hand, and IR transformations are easy to trace.
+
+**中文:** 两种形式都完全可往返；每个编译器 Pass 都能单独测试，文本形式同时作为输入与输出。由于不存在隐藏状态，单独运行某个 Pass 的结果，与在完整 Pass 流水线中运行同一 Pass 相同。这种方式对用户友好：IR 可手工编写，IR 变换也易于追踪。
+
+### 4.5 文档
+
+<a id="S063"></a>
+**Source:** p.11 S063
+
+**Original:** Dialects, Ops and Interfaces have a documentation generated from their ODS descriptions. Beyond one line summary and more readable description, the generated documentation includes argument and result type constraints. As the same source is used for both the verification code and documentation, the documentation has higher changes of remaining in sync with runtime behavior.
+
+**中文:** 方言、Op 与接口的文档由其 ODS 描述生成。除单行摘要和更易读的详细说明外，生成的文档还包括参数及结果的类型约束。验证代码和文档来自同一来源，因此文档更有可能与运行时行为保持同步。
+
+### 4.6 验证器
+
+<a id="S064"></a>
+**Source:** p.11 S064
+
+**Original:** Verifiers are used to enforce structural correctness of the IR and invariants of Ops, allowing passes to assume a verified IR with invariants checked, and also serves as a debugging tool. Verification starts with checking structural properties of MLIR overall: types must match exactly, values are defined only once and obey dominance and visibility, symbol names are unique in the symbol table, all blocks end with terminator Ops, etc. After that, individual Op and attribute verifiers are applied. Each Op may define a set of structural and semantic rules that check its validity. For example, a binary Op checks that it has two operands, many Ops only accept values of specific types, and many require specific attributes or regions attached. Similarly, dialect attributes can be only allowed on specific Ops or impose further restrictions on the Ops to which they are attached. For example, a dialect attribute can require an Op to only use types defined in the dialect even though the Op itself is more generic. Verification failures are considered invariant violations and abort compilation.
+
+**中文:** 验证器用于强制保证 IR 的结构正确性和 Op 不变量，使 Pass 可以假定输入 IR 已经验证并满足不变量；验证器也可用作调试工具。验证首先检查 MLIR 的整体结构性质：类型必须精确匹配；值只定义一次并满足支配关系与可见性；符号表中的符号名唯一；所有块都以终结 Op 结束，等等。随后再应用各 Op 与属性的验证器。每个 Op 都可定义一组结构和语义规则检查自身有效性。例如，二元 Op 要检查自己有两个操作数；许多 Op 只接受特定类型的值；许多 Op 还要求附带特定属性或区域。类似地，方言属性可能只允许用于特定 Op，或进一步限制其附着的 Op。例如，某个方言属性可以要求 Op 只使用该方言定义的类型，即使 Op 本身更通用。验证失败被视为违反不变量，并会中止编译。
+
+## 5 评估：MLIR 的应用
+
+<a id="S065"></a>
+**Source:** p.11 S065
+
+**Original:** MLIR is a system that aims to generalize and drive a wide range of compiler projects, so our primary evaluation metric is to show that it is being adopted and used for diverse projects. We provide a summary of community activity and describe a few use cases in more detail to highlight the generality and extensibility of MLIR and demonstrate how well it implements the customizability design principle.
+
+**中文:** MLIR 的目标是推广并推动广泛的编译器项目，因此作者的首要评估指标，是证明它已被多种项目采用和使用。论文概述社区活动，并更详细地介绍若干用例，以突出 MLIR 的通用性与可扩展性，并说明它在多大程度上实现了可定制性这一设计原则。
+
+<a id="S066"></a>
+**Source:** p.11 S066
+
+**Original:** Today, MLIR is a growing open source project with a community spanning academia and industry. For example, the academic workshop about use of MLIR in High-Performance Computing (HPC) was attended by individuals from 16 universities and involved 4 national laboratories from 4 different countries. MLIR was also endorsed by 14 multinational companies and at the LLVM Developer Meeting more than 100 industry developers attended a roundtable event about MLIR. Community adoption and participation is a proxy measure for usability and need. More than 26 dialects are in development in public or private and 7 projects across different companies are replacing custom infrastructure with MLIR. We argue that this shows a real need for MLIR, as well as endorses its usability.
+
+**中文:** 在论文写作时，MLIR 是一个持续成长的开源项目，社区横跨学术界和工业界。例如，一场讨论 MLIR 在高性能计算（HPC）中应用的学术研讨会吸引了来自 16 所大学的参与者，并涉及 4 个国家的 4 家国家实验室。MLIR 还得到 14 家跨国公司的支持；LLVM 开发者大会上，100 多名工业开发者参加了 MLIR 圆桌会议。社区采用与参与可作为易用性和需求的替代指标。当时有超过 26 个方言正在公开或私下开发，来自不同公司的 7 个项目正用 MLIR 替换自定义基础设施。作者据此主张：MLIR 确有现实需求，其可用性也得到了支持。
+
+### 5.1 TensorFlow 图
+
+<a id="S067"></a>
+**Source:** p.11 S067
+
+**Original:** While the other discussed representations are familiar to most compiler developments, one of key use cases for MLIR is to support the development of machine learning frameworks. Their internal representations is often based on a data flow graph [53] with a dynamic execution semantics. TensorFlow [1] is an example of such framework. Its representation is a high-level dataflow computation where the nodes are computations which can be placed on various devices, including specific hardware accelerators.
+
+**中文:** 论文讨论的其他表示大多为编译器开发者所熟悉，而 MLIR 的一个关键用例是支持机器学习框架开发。这些框架的内部表示通常基于具有动态执行语义的数据流图 [53]。TensorFlow [1] 就是一个例子：它把程序表示为高层数据流计算，其中节点是可以放置到不同设备上的计算，包括专用硬件加速器。
+
+<a id="S068"></a>
+**Source:** pp.11–12 S068
+
+**Original:** MLIR is used in TensorFlow to model this internal representation and perform transformations for the use cases presented in Figure 1: from simple algebraic optimizations to retargeting graphs for parallel execution on data center clusters of hardware accelerators, from lowering to a representation suitable for mobile deployment to generating efficient native code using tools like XLA [57]. The representation of a TensorFlow graph in MLIR is illustrated on Figure 7.
+
+**中文:** TensorFlow 使用 MLIR 对这种内部表示建模，并针对图 1 所示用例执行变换：既包括简单代数优化，也包括重新定向计算图，使其在数据中心硬件加速器集群上并行执行；既包括降低为适合移动端部署的表示，也包括使用 XLA [57] 等工具生成高效本机代码。图 7 展示了 TensorFlow 图在 MLIR 中的表示。
+
+<a id="F007"></a>
+### 图 7　TensorFlow 数据流图的 SSA 表示
+
+**Placed near:** pp.11–12 S068  
+**Source:** p.12 C007
+
+![Figure 7](assets/fig07_tensorflow_ssa.png)
+
+<a id="C007"></a>
+**Original caption:** Figure 7: SSA representation of a TensorFlow dataflow graph in MLIR.
+
+**中文图注:** 图 7：TensorFlow 数据流图在 MLIR 中的 SSA 表示。
+
+**Reading note:** 数据值与控制令牌都成为 SSA 结果。异步 Op 的显式控制结果可以额外约束运行时顺序，例如保证变量写发生在读之后。
+
+### 5.2 多面体代码生成
+
+<a id="S069"></a>
+**Source:** p.12 S069
+
+**Original:** One of the original motivations for MLIR was the exploration of polyhedral code generation for accelerators. The affine dialect is a simplified polyhedral representation that was designed to enable progressive lowering. While a full exploration of the design points here is out of scope for this paper, we illustrate aspects of the affine dialect to show the modeling power of MLIR and contrast the affine dialect with past representations [17, 19, 54, 55, 52].
+
+**中文:** MLIR 最初的动机之一，是探索面向加速器的多面体代码生成。仿射方言是一种为支持渐进式降低而设计的简化多面体表示。完整考察相关设计点超出本文范围；作者通过展示仿射方言的若干方面说明 MLIR 的建模能力，并把它与以往表示进行比较 [17, 19, 54, 55, 52]。
+
+#### 5.2.1 相似之处
+
+<a id="S070"></a>
+**Source:** p.12 S070
+
+**Original:** The MLIR affine dialect operates on a structured multi-dimensional type for all accesses to memory. In the default case, these structured types are injective: different indexings are guaranteed not to alias by construction, a common precondition for polyhedral dependence analyses.
+
+**中文:** MLIR 仿射方言使用一种结构化多维类型表示所有内存访问。默认情况下，这些结构化类型具有单射性：通过构造即可保证不同索引不发生别名，这是多面体依赖分析的一项常见前提。
+
+<a id="S071"></a>
+**Source:** p.12 S071
+
+**Original:** Affine modeling is split in two parts. Attributes are used to model affine maps and integer sets at compile-time and Ops are used to apply affine restrictions to the code. Namely, affine.for Op is a “for” loop with bounds expressed as affine maps of values required to be invariant in a function. Thus loops have static control flow. Similarly, affine.if is a conditional restricted by affine integer sets. The bodies of loops and conditionals are regions that use affine.load and affine.store to restrict indexing to affine forms of surrounding loop iterators. This enables exact affine dependence analysis while avoiding the need to infer affine forms from a lossy lower-level representation.
+
+**中文:** 仿射建模分为两部分：属性在编译期对仿射映射和整数集合建模，Op 则把仿射限制施加到代码上。具体而言，affine.for Op 是一种 for 循环，其边界表示成若干值的仿射映射，而这些值必须在函数内保持不变，因此循环具有静态控制流。类似地，affine.if 是受仿射整数集合限制的条件构造。循环与条件构造的主体都是区域，其中 affine.load 和 affine.store 把索引限制为外层循环迭代变量的仿射形式。这样便能进行精确的仿射依赖分析，而无需从有损的低层表示反推仿射形式。
+
+#### 5.2.2 不同之处
+
+<a id="S072"></a>
+**Source:** p.12 S072
+
+**Original:** The differences with existing polyhedral frameworks are numerous; we can characterize them in four categories:
+
+**中文:** MLIR 与既有多面体框架存在许多差异，可归纳为四类：
+
+<a id="S073"></a>
+**Source:** p.12 S073
+
+**Original:** **(1) Rich types:** the MLIR structured memory reference type contains a layout map connecting the index space of the buffer to the actual address space. This separation of concerns makes loop and data transformations compose better: changes to data layout do not affect the code and do not pollute dependence analysis. Such mixes of transformations have been explored previously [38] but are uncommon.
+
+**中文:** **（1）丰富的类型：** MLIR 的结构化内存引用类型包含布局映射，把缓冲区索引空间连接到实际地址空间。这种关注点分离使循环变换与数据变换更容易组合：数据布局变化既不影响代码，也不会污染依赖分析。以往工作虽探索过这种变换混合 [38]，但并不常见。
+
+<a id="S074"></a>
+**Source:** p.12 S074
+
+**Original:** **(2) Mix of abstractions:** Bodies of affine loops in MLIR can be expressed with operations on typed SSA values. Therefore, all traditional compiler analyses and transformations remain applicable and can be interleaved with polyhedral transformations. On the contrary, polyhedral compilers often abstract such details away completely, making it challenging for a polyhedral compiler to manipulate, e.g., vector types.
+
+**中文:** **（2）混合抽象：** MLIR 仿射循环的主体可以表示为对带类型 SSA 值的操作。因此，所有传统编译器分析与变换仍然适用，并可与多面体变换交错执行。与之相反，多面体编译器往往会彻底抽象掉这些细节，从而难以操纵向量类型等对象。
+
+<a id="F008"></a>
+### 图 8　仿射方言中的多项式乘法
+
+**Placed near:** p.12 S074  
+**Source:** p.13 C008
+
+![Figure 8](assets/fig08_affine_polynomial.png)
+
+<a id="C008"></a>
+**Original caption:** Figure 8: Representing polynomial multiplication kernel C(i+j) += A(i) * B(j) using MLIR affine dialect.
+
+**中文图注:** 图 8：使用 MLIR 仿射方言表示多项式乘法内核 C(i+j) += A(i) * B(j)。
+
+**Reading note:** 与图 4 的通用形式相比，此处语法更短，却仍明确保留循环区域、SSA 值、memref 布局映射与仿射下标。
+
+<a id="S075"></a>
+**Source:** p.13 S075
+
+**Original:** **(3) Smaller representation gap:** One of the key features of the polyhedral model is its ability to represent the order of loop iterations in the type system. In this system, a large number of loop transformations compose directly and can be reasoned about using simple mathematical abstractions [19]. However, polyhedral transformations require raising into a representation often drastically different from the original [20, 10]. Furthermore, the conversion from transformed polyhedra to loops is computationally hard [7]. MLIR-based representation maintains high-level loop structure around lower-level representation, removing the need for raising.
+
+**中文:** **（3）更小的表示鸿沟：** 多面体模型的一项关键特性，是能在类型系统中表示循环迭代顺序。大量循环变换可在该系统中直接组合，并可借助简单数学抽象推理 [19]。然而，多面体变换要求先提升到一种通常与原表示差异巨大的表示 [20, 10]；而且，把变换后的多面体再转换成循环在计算上很困难 [7]。基于 MLIR 的表示在较低层表示周围保留高层循环结构，因此无需再做语义提升。
+
+<a id="S076"></a>
+**Source:** p.13 S076
+
+**Original:** **(4) Compilation speed** is a crucial goal for MLIR as discussed in Section 4.3, but has not been a focus of most existing polyhedral approaches. These rely heavily on algorithms with exponential complexity: on integer linear programming to derive loop orderings automatically and on polyhedron scanning algorithms to convert the representation back to loops. The approach taken by MLIR explicitly does not rely on polyhedron scanning since loops are preserved in the IR.
+
+**中文:** **（4）编译速度：** 如第 4.3 节所述，编译速度是 MLIR 的关键目标，但大多数既有多面体方法并未把它作为重点。这些方法严重依赖指数复杂度算法：用整数线性规划自动推导循环顺序，再用多面体扫描算法把表示转换回循环。MLIR 在 IR 中保留循环，因此明确不依赖多面体扫描。
+
+<a id="S077"></a>
+**Source:** p.13 S077
+
+**Original:** Experience with the affine dialect shows that it is useful for a wide range of code generation projects, and its development was important exploration that the MLIR design made practical.
+
+**中文:** 使用仿射方言的经验表明，它对多种代码生成项目都很有用；MLIR 的设计使这一重要探索成为切实可行的工作。
+
+### 5.3 Fortran IR（FIR）
+
+<a id="S078"></a>
+**Source:** p.13 S078
+
+**Original:** The LLVM Fortran frontend “flang” is currently under major development, led by NVIDIA/PGI. Similar to Swift, Rust, and others, flang needs a specialized IR in order to support advanced transformations for high-performance Fortran codebase, and is using MLIR to support these Fortran-specific optimizations [44]. These high-level optimizations—advanced loop optimizations, array copy elimination, call specialization, devirtualization—would be hard to implement using only LLVM.
+
+**中文:** 当时，LLVM 的 Fortran 前端 flang 正在 NVIDIA/PGI 主导下进行大规模开发。与 Swift、Rust 等语言类似，flang 需要专用 IR 来支持面向高性能 Fortran 代码的高级变换，并使用 MLIR 支持这些 Fortran 特定优化 [44]。高级循环优化、数组复制消除、调用特化和去虚拟化等高层优化，只使用 LLVM 很难实现。
+
+<a id="S079"></a>
+**Source:** p.13 S079
+
+**Original:** For example, FIR is able to model Fortran virtual dispatch table as a first class concept (see Figure 9).
+
+**中文:** 例如，FIR 可以把 Fortran 虚分派表建模为一等概念（见图 9）。
+
+<a id="F009"></a>
+### 图 9　FIR 的动态虚函数分派表
+
+**Placed near:** p.13 S079  
+**Source:** p.13 C009
+
+![Figure 9](assets/fig09_fir_dispatch.png)
+
+<a id="C009"></a>
+**Original caption:** Figure 9: FIR has first class support for dynamic virtual function dispatch table.
+
+**中文图注:** 图 9：FIR 对动态虚函数分派表提供一等支持。
+
+**Reading note:** 分派表与分派操作都直接存在于 FIR 中，而不是过早退化为指针和间接调用。这让后续去虚拟化 Pass 能看见并利用高层语义。
+
+<a id="S080"></a>
+**Source:** p.14 S080
+
+**Original:** The ability to model the high-level semantics of the programming language in a structured IR is very powerful. For example, first-class modeling of the dispatch tables allows a robust devirtualization pass to be implemented. While this could have been implemented with a bespoke compiler IR, the use of MLIR allowed the flang developers to spend their engineering resources focused on the IR design for their domain instead of reimplementing basic infrastructure.
+
+**中文:** 在结构化 IR 中建模程序设计语言的高层语义非常强大。例如，把分派表建模为一等概念，可以实现稳健的去虚拟化 Pass。定制编译器 IR 当然也能做到这一点，但使用 MLIR 后，flang 开发者可把工程资源集中于本领域的 IR 设计，而无需重新实现基础设施。
+
+<a id="S081"></a>
+**Source:** p.14 S081
+
+**Original:** The choice of MLIR also unlocks the reusability of other dialects that are not specific to Fortran: a language-independent OpenMP dialect could be shared between Fortran and C language frontends. Similarly, targeting a heterogeneous platform using OpenACC becomes tractable within MLIR through the sharing and reuse of the GPU-oriented dialects and passes. This is straightforward thanks to MLIR begin specifically designed to support a mix of composable dialects.
+
+**中文:** 选择 MLIR 还使其他非 Fortran 专用方言得以复用。例如，语言无关的 OpenMP 方言可由 Fortran 与 C 前端共享。类似地，通过共享和复用面向 GPU 的方言与 Pass，在 MLIR 中使用 OpenACC 面向异构平台也变得切实可行。因为 MLIR 专门支持混合可组合方言，这种复用十分直接。
+
+### 5.4 领域专用编译器
+
+<a id="S082"></a>
+**Source:** p.14 S082
+
+**Original:** The applications of MLIR above are within large compilation workflows, but it is also used to build domain specific compilers for specific small workflows. A reusable and modular infrastructure makes these specialized paths feasible and relatively cheap to build.
+
+**中文:** 上述 MLIR 应用都位于大型编译工作流中，但它也可为特定的小型工作流构建领域专用编译器。可复用、模块化的基础设施，使这些专用路径既可行，又能以较低成本构建。
+
+<a id="S083"></a>
+**Source:** p.14 S083
+
+**Original:** **Optimizing MLIR pattern rewriting.** MLIR has an extensible system for pattern rewrites described in Section 4. In addition to statically declared patterns, we had applications where the rewrite patterns needed to be dynamically extensible at runtime, allowing hardware vendors to add new lowerings in drivers. The solution was to express MLIR pattern rewrites as an MLIR dialect itself, allowing us to use MLIR infrastructure to build and optimize efficient Finite State Machine (FSM) matcher and rewriters on the fly. This work includes FSM optimizations seen in other systems, such as the LLVM SelectionDAG and GlobalISel instruction selection systems.
+
+**中文:** **优化 MLIR 模式重写。** 第 4 节介绍了 MLIR 的可扩展模式重写系统。除静态声明模式外，某些应用还要求重写模式能够在运行时动态扩展，使硬件厂商可在驱动程序中加入新的降低路径。解决办法是把 MLIR 模式重写本身表达成一个 MLIR 方言，于是便能使用 MLIR 基础设施即时构建和优化高效的有限状态机（FSM）匹配器与重写器。这项工作包含其他系统中已有的 FSM 优化，例如 LLVM SelectionDAG 与 GlobalISel 指令选择系统中的优化。
+
+<a id="S084"></a>
+**Source:** p.14 S084
+
+**Original:** **Lattice regression compiler.** Lattice regression [18] is a machine learning technique renowned for fast evaluation times and interpretability. The predecessor of the compiler was implemented using C++ templates. This allowed for high-performance code with metaprogramming, but expressing general optimizations on the end-to-end models was not straightforward. This particular lattice regression system is used in applications with multiple millions of users and hence performance improvements are critical.
+
+**中文:** **格回归编译器。** 格回归 [18] 是一种以评估速度快、可解释性强而著称的机器学习技术。该编译器的前身使用 C++ 模板实现，虽然可借助元编程生成高性能代码，却难以直接表达端到端模型上的通用优化。这个格回归系统用于拥有数百万用户的应用，因此性能改进十分关键。
+
+<a id="S085"></a>
+**Source:** p.14 S085
+
+**Original:** MLIR was used as the basis for a new compiler for this specialized area, which was driven by a specialized search approach—effectively resulting in a machine learning problem being solved during compilation. The resultant compiler was developed by investing a 3 person-month effort, and resulted in up to 8× performance improvement on a production model, while also improving transparency during compilation.
+
+**中文:** MLIR 被用作这一专门领域新编译器的基础。该编译器由专用搜索方法驱动，实质上是在编译期间求解一个机器学习问题。新编译器投入 3 人月完成开发，在一个生产模型上获得最高 8 倍的性能提升，同时改善了编译过程的透明度。
+
+## 6 MLIR 设计的影响
+
+<a id="S086"></a>
+**Source:** p.14 S086
+
+**Original:** The MLIR design facilitates the modeling of new language and compilation abstractions while reusing existing, generic ones as well as their associated compilation methods. Effectively, the solution to many problems is to “add new ops, new types”, possibly collected into “a new dialect”. This is a significant design shift for compiler engineering. It produces new opportunities, challenges, and insights. This section explores a few of them.
+
+**中文:** MLIR 的设计既便于建模新的语言与编译抽象，又能复用既有通用抽象及其相关编译方法。许多问题实际上可通过“添加新 Op、新类型”解决，并可把它们收集为“新方言”。这是编译器工程中的重大设计转变，带来了新的机会、挑战与认识。本节考察其中若干方面。
+
+### 6.1 可复用编译器 Pass
+
+<a id="S087"></a>
+**Source:** p.14 S087
+
+**Original:** The ability to represent multiple levels of abstraction in one IR creates the natural desire to write passes that work across multiple levels of abstraction. A common question about MLIR is “how do you write a compiler pass when you have openly extensible operations and type system?” While it is always possible for a compiler pass to treat unknown constructs in a conservatively correct way, our goal is to produce high performance code, so we need to do useful things in common cases. We have found four major approaches:
+
+**中文:** 在一个 IR 中表示多个抽象层次，自然会产生编写跨层 Pass 的需求。关于 MLIR，一个常见问题是：“当操作和类型系统都开放扩展时，该如何编写编译器 Pass？”Pass 总能以保守且正确的方式处理未知构造，但系统目标是生成高性能代码，因此还必须在常见情形下完成有用工作。作者总结出四种主要方法：
+
+<a id="S088"></a>
+**Source:** pp.14–15 S088
+
+**Original:** **Fundamental operation traits.** Some “bread and butter” compiler passes like Dead Code Elimination and Common Subexpression Elimination rely on very simple properties (like “has no side effect” or “is commutative”) that we define as Op traits. The definition of an operation in ODS allows the author of the operation to specify these traits, and passes can uses this information to remain applicable across many different abstraction domains.
+
+**中文:** **基本操作特征。** 死代码消除、公共子表达式消除等常用编译器 Pass，只依赖“无副作用”或“满足交换律”等非常简单的性质；MLIR 把这些性质定义为 Op 特征。ODS 中的 Op 定义允许作者指定这些特征，Pass 则可利用相关信息，使自己适用于许多不同抽象领域。
+
+<a id="S089"></a>
+**Source:** p.15 S089
+
+**Original:** MLIR is extensible enough that it has a few structural properties, including information about whether an operation is known to be a control flow terminator, whether an operation containing a region is known to be isolated-from-above, etc. These allow generic modeling and processing of functions, closures, modules, and other code structures.
+
+**中文:** MLIR 尽管高度可扩展，仍保留少量结构性质，例如某个 Op 是否已知为控制流终结器、包含区域的 Op 是否已知与上层隔离等。这些性质允许系统通用地建模和处理函数、闭包、模块及其他代码结构。
+
+<a id="S090"></a>
+**Source:** p.15 S090
+
+**Original:** **Privileged operation hooks.** While certain traits can be modeled with a single bit, others need C++ code to provide an implementation—constant folding logic for example. MLIR has first class support for certain hooks applicable to a large number of passes. These hooks can either be implemented on a per-operation basis, or in the Dialect object itself. The latter approach is convenient for things like constant folding of TensorFlow ops, where delegation to existing logic is straightforward.
+
+**中文:** **特权操作钩子。** 某些特征可用一个比特建模，另一些则需要 C++ 代码实现，常量折叠逻辑就是一例。MLIR 对适用于大量 Pass 的某些钩子提供一等支持。这些钩子可以逐 Op 实现，也可直接在方言对象中实现。后一方式适合 TensorFlow Op 常量折叠等场景，因为可以直接委托给既有逻辑。
+
+<a id="S091"></a>
+**Source:** p.15 S091
+
+**Original:** While constant folding is very important functionality, a more interesting hook is getCanonicalizationPatterns, which allows one to specify folding patterns that apply to an operation. This enables open extensibility of important algebraic simplifications (e.g. x − x → 0, min(x, y, y) → min(x, y), etc.) and powers a common “Canonicalization” pass that can now be applied to all dialects. This allows this single extensible system to subsume things like “InstCombine”, “DAGCombine”, “PeepholeOptimizer”, “SILCombine”, and other special purpose passes seen in the LLVM ecosystem (and other compilers), which are a well-known maintenance and complexity burden.
+
+**中文:** 常量折叠固然重要，但更有意思的钩子是 getCanonicalizationPatterns，它允许指定适用于某个 Op 的折叠模式。这样，$x-x\rightarrow0$、$\min(x,y,y)\rightarrow\min(x,y)$ 等重要代数化简便可开放扩展，并共同支撑一个适用于所有方言的“规范化”Pass。这个统一的可扩展系统可以覆盖 LLVM 生态及其他编译器中的 InstCombine、DAGCombine、PeepholeOptimizer、SILCombine 等专用 Pass；后者是众所周知的维护与复杂度负担。
+
+<a id="S092"></a>
+**Source:** p.15 S092
+
+**Original:** **Optimization interfaces.** A primary goal of MLIR is to allow open extensibility—not just in terms of operations and types, but also in terms of transformations. While canonicalization and constant folding are critical operations, there are a number of standard transformations that need to be parameterized in certain ways—e.g., to describe transformation specific properties, to implement cost models, etc.
+
+**中文:** **优化接口。** MLIR 的首要目标之一，是允许开放扩展，而且扩展对象不仅包括 Op 与类型，也包括变换。规范化和常量折叠固然关键，但还有许多标准变换需要以某种方式参数化，例如描述变换特有性质、实现成本模型等。
+
+<a id="S093"></a>
+**Source:** p.15 S093
+
+**Original:** The solution is a subsystem known as “Optimization Interfaces”. Consider the MLIR inlining pass: we would like the inliner to work on TensorFlow graphs, Flang functions, closures in a functional language, etc.—but the inliner does not know what call sites or even the callees are! The core characteristics that an inliner needs to know are:
+
+- whether it is valid to inline an operation into a given region;
+- how to handle terminator operations that ended up in the middle of a block after inlining.
+
+**中文:** 解决方案是称为“优化接口”的子系统。以 MLIR 内联 Pass 为例：系统希望内联器能处理 TensorFlow 图、Flang 函数、函数式语言的闭包等对象，但内联器甚至不知道哪些对象是调用点、哪些是被调用者。内联器真正需要知道的核心性质只有：
+
+- 把某个 Op 内联到给定区域是否合法；
+- 如何处理内联后落在块中间的终结 Op。
+
+<a id="F010"></a>
+### 图 10　查询内联合例性的方言接口
+
+**Placed near:** p.15 S093  
+**Source:** p.15 C010
+
+![Figure 10](assets/fig10_inliner_interface.png)
+
+<a id="C010"></a>
+**Original caption:** Figure 10: Dialect interface to query legality of inlining.
+
+**中文图注:** 图 10：用于查询内联合例性的方言接口。
+
+**Reading note:** 通用内联器不需要认识所有 Op；方言只需回答“能否内联”并说明如何处理终结 Op。知识留在方言一侧，算法留在基础设施一侧。
+
+<a id="S094"></a>
+**Source:** p.15 S094
+
+**Original:** In order to know these properties, the Inliner pass defines the interface in Figure 10. Individual operations and dialects may register their implementation of this interface with MLIR to benefit from the generic inliner pass. If an operation or dialect fails to provide an interface then the corresponding optimization pass will treat the operation conservatively. This design allows the implementer of a dialect to get up and running quickly, but derive more value out of the system by putting more implementation effort into interfaces like these over time.
+
+**中文:** 为获得这些性质，内联 Pass 定义了图 10 所示接口。各个 Op 和方言可向 MLIR 注册接口实现，从而受益于通用内联 Pass。如果某个 Op 或方言没有提供接口，相应优化 Pass 就会保守处理该 Op。这种设计让方言实现者能够快速启动；随着时间推移，还可通过逐步投入更多精力实现此类接口，从系统中获得更大价值。
+
+<a id="S095"></a>
+**Source:** p.15 S095
+
+**Original:** Optimization interfaces also provide modularity benefit for the core compiler, because the dialect specific logic is implemented within the dialects themselves, instead of inside the core transformations.
+
+**中文:** 优化接口也提高了核心编译器的模块化程度，因为方言特定逻辑实现在方言内部，而不是塞进核心变换。
+
+<a id="S096"></a>
+**Source:** pp.15–16 S096
+
+**Original:** **Dialect specific passes.** Finally, it is valid and useful to define passes that are specific to particular dialects, which can be driven by full semantics of operations in the dialect(s) they are designed for. These passes are just as useful in the MLIR system as they are in other compiler systems. For example, code generators that want to do custom scheduling of machine instructions based on particular machine constraints or other tricks that do not fit into a broader framework. This is a simple and useful starting point for new transformations, where generalization is not required.
+
+**中文:** **方言特定 Pass。** 最后，定义专用于特定方言的 Pass 既合理也有用；它们可以由目标方言中 Op 的完整语义驱动。这类 Pass 在 MLIR 中与在其他编译器系统中同样有价值。例如，代码生成器可能希望依据特定机器约束自定义机器指令调度，或采用不适合纳入更通用框架的技巧。当新变换不需要通用化时，这是简单而实用的起点。
+
+### 6.2 混合方言
+
+<a id="S097"></a>
+**Source:** p.16 S097
+
+**Original:** One of the most profound (but also most difficult to grok) aspects of MLIR is that it allows and encourages mixing operations from different dialects together into a single program. While certain cases of this are reasonably easy to understand (e.g. holding host and accelerator computation in the same module), the most interesting cases occur when dialects are directly mixed—because this enables an entire class of reuse that we have not seen in other systems.
+
+**中文:** MLIR 最深刻、也最难真正理解的特性之一，是允许并鼓励把不同方言的 Op 混合到同一程序中。某些情形相对容易理解，例如在同一模块保存主机与加速器计算；最有趣的情形则是方言被直接混合，因为这会带来作者在其他系统中未见过的一整类复用方式。
+
+<a id="S098"></a>
+**Source:** p.16 S098
+
+**Original:** Consider the affine dialect described in Section 5.2. The definition of affine control flow and affine mappings are independent of the semantics of the operations that are contained in affine regions. In our case, we combine the affine dialect with the “standard” dialect that represents simple arithmetic in a target independent form like LLVM IR, with multiple target-specific machine instruction dialects for internal accelerators. Others have combined it with abstractions from other problem domains.
+
+**中文:** 以第 5.2 节的仿射方言为例，仿射控制流和仿射映射的定义，与仿射区域内所含 Op 的语义彼此独立。作者把仿射方言与“标准”方言结合；后者以类似 LLVM IR 的目标无关形式表示简单算术。此外还会混入多个面向内部加速器、目标特定的机器指令方言。其他使用者也把仿射方言与别的问题领域中的抽象相结合。
+
+<a id="S099"></a>
+**Source:** p.16 S099
+
+**Original:** The ability to reuse generic polyhedral transformations (using Op interfaces to get semantics of operations in specific transformations) is a powerful (and exciting to us) way of factoring compiler infrastructure. Another example is that an OpenMP dialect could be used and reused across a wide variety of source-language IRs.
+
+**中文:** 复用通用多面体变换的能力——在具体变换中通过 Op 接口获取操作语义——是一种强大且令作者振奋的编译器基础设施分解方式。另一个例子是，OpenMP 方言可在多种源语言 IR 之间使用和复用。
+
+### 6.3 互操作性
+
+<a id="S100"></a>
+**Source:** p.16 S100
+
+**Original:** Our work involves interoperation with a large number of existing systems, e.g., machine learning graphs encoded as protocol buffers, compiler IRs including LLVM IR, proprietary instruction sets, etc. Often the representation has a number of suboptimal or unfortunate decisions that made sense in the context of an existing system, but capabilities of MLIR enable a more expressive representation. Because importers and exporters are notoriously difficult to test (often the test cases are binary formats), we want to make sure their complexity is minimized.
+
+**中文:** 作者的工作需要与大量既有系统互操作，例如编码为 protocol buffers 的机器学习图、包括 LLVM IR 在内的编译器 IR，以及专有指令集等。原表示往往含有一些并不理想的设计决策；它们在既有系统语境中有其合理性，但 MLIR 能提供表达力更强的表示。导入器和导出器出了名地难以测试——测试用例往往还是二进制格式——因此必须尽量降低其复杂度。
+
+<a id="S101"></a>
+**Source:** p.16 S101
+
+**Original:** The solution is to define a dialect that corresponds to the foreign system as directly as possible—allowing round tripping to-and-from that format in a simple and predictable way. Once the IR is imported into MLIR form, it can be raised and lowered to a more convenient IR using all of the MLIR infrastructure for doing these transformations, and allows those transformations to be tested similarly to all the other MLIR passes.
+
+**中文:** 解决方案是定义一个尽可能直接对应外部系统的方言，使该格式与 MLIR 之间能够以简单、可预测的方式往返转换。一旦 IR 被导入 MLIR，就可以借助全部 MLIR 基础设施，把它提升或降低为更方便的 IR；这些变换也能像其他 MLIR Pass 一样接受测试。
+
+<a id="S102"></a>
+**Source:** p.16 S102
+
+**Original:** There are numerous examples of such dialects, including: (a) the LLVM dialect—which maps LLVM IR into MLIR; (b) the representation of TensorFlow graphs—which is raised to ease analysis and transformations related to “switch and merge” nodes in TensorFlow; and (c) functional-style control flow operators—“functional while” and “functional if” are common in machine learning graphs, in which it is more convenient to work with their bodies as regions instead of out-of-line functions. This approach has worked well for us, and the MLIR tooling has also been useful to write tests for these foreign binary file formats.
+
+**中文:** 这类方言有许多实例：（a）LLVM 方言，把 LLVM IR 映射到 MLIR；（b）TensorFlow 图表示，可被提升以便分析和变换 TensorFlow 的 switch 与 merge 节点；（c）函数式控制流 Op，机器学习图中常见 functional while 和 functional if，把其主体作为区域处理，比作为离线函数更方便。这种方法在作者实践中效果良好，MLIR 工具也有助于为外部二进制文件格式编写测试。
+
+### 6.4 无预设立场的设计带来新挑战
+
+<a id="S103"></a>
+**Source:** p.16 S103
+
+**Original:** While MLIR allows one to define almost arbitrary abstractions, it provides very little guidance on what should be done: what works better or worse in practice? We now have some experience with a number of engineers and researchers applying the techniques and technologies to new problem domains, and have realized that the “art” of compiler IR design and abstraction design is not well understood in the compiler and languages field—many people work within the constraints of established systems, but relatively few have had the opportunity to define the abstractions themselves.
+
+**中文:** MLIR 允许定义几乎任意抽象，却很少指导人们具体应该怎么做：实践中哪些选择更好，哪些更差？在若干工程师和研究者把这些技术用于新问题领域后，作者意识到，编译器与语言领域并没有充分理解编译器 IR 设计和抽象设计这门“技艺”。许多人只在既有系统的约束中工作，真正有机会自行定义抽象的人相对很少。
+
+<a id="S104"></a>
+**Source:** p.16 S104
+
+**Original:** This is a challenge, but is also another set of opportunities for future research. The broader MLIR community is building a significant amount of expertise with these abstraction design trade-offs, and we expect this to be a fertile area of study over time.
+
+**中文:** 这既是挑战，也是一组未来研究机会。更广泛的 MLIR 社区正在积累大量处理抽象设计权衡的经验；作者预计，随着时间推移，这会成为富有成果的研究领域。
+
+### 6.5 展望
+
+<a id="S105"></a>
+**Source:** p.17 S105
+
+**Original:** The design of MLIR is different enough from other compiler infrastructures that we are still learning—even after building and applying it to many different systems. We believe that there is still a lot to discover, and several more years of research will be required until the design points are all fully understood and best practices are established. For example, the rise of out-of-tree dialects, increasing number of source language frontends using MLIR, possible application to Abstract Syntax Trees, and applications to structured data (like JSON, protocol buffers, etc.) are still very early and are likely to uncover interesting new challenges and opportunities.
+
+**中文:** MLIR 的设计与其他编译器基础设施差异很大；即使已经在许多不同系统中构建并应用它，作者仍在学习。尚有许多内容有待发现，可能还需数年研究才能充分理解所有设计点并确立最佳实践。例如，树外方言的兴起、越来越多源语言前端采用 MLIR、MLIR 应用于抽象语法树的可能性，以及将其用于 JSON、protocol buffers 等结构化数据，都仍处于很早阶段，可能揭示有趣的新挑战与机会。
+
+## 7 相关工作
+
+<a id="S106"></a>
+**Source:** p.17 S106
+
+**Original:** MLIR is a project that overlaps with multiple different domains. While the composed infrastructure provides a novel system, individual components have analogs in the literature. For references and discussion directly related to the IR design itself, please refer to Section 2.
+
+**中文:** MLIR 与多个不同领域存在交集。组合后的基础设施形成一种新系统，但各个组件在既有文献中都有相似物。与 IR 设计本身直接相关的参考文献与讨论见第 2 节。
+
+<a id="S107"></a>
+**Source:** p.17 S107
+
+**Original:** MLIR is a compiler infrastructure akin to LLVM [25], but where LLVM has been a great boon to scalar optimizations and homogeneous compilation, MLIR aims to model a rich set of data structures and algorithms as first-class values and operations, including tensor algebra and algorithms, graph representations, as well as heterogeneous compilation. MLIR allows mix-and-match optimization decomposing compilation passes into components and redefining lowering, cleanup roles. This is largely attributed to the pattern rewriting infrastructure, capturing full-fledged transformations as a composition of small local patterns and controlling which pattern rewrites are applied at the granularity of an individual operation. Extending, formalizing, and verifying the rewriting logic automatically would be an important next step [9, 27]. On the backend side, MLIR’s DDR has an analogue to LLVM’s instruction selection infrastructure, supporting extensible operations with multi-result patterns and specification as constraints [49].
+
+**中文:** MLIR 是类似 LLVM [25] 的编译器基础设施。LLVM 极大促进了标量优化和同构编译，而 MLIR 旨在把丰富的数据结构与算法建模为一等值和 Op，其中包括张量代数及相关算法、图表示和异构编译。MLIR 支持混合匹配优化，把编译 Pass 分解为组件，并重新界定降低与清理的角色。这主要归功于模式重写基础设施：完整变换由小型局部模式组合而成，并在单个 Op 粒度上控制应用哪些模式重写。自动扩展、形式化并验证重写逻辑，是重要的下一步 [9, 27]。在后端，MLIR 的 DRR（原文此处作 DDR）与 LLVM 指令选择基础设施相似，通过约束规约支持可扩展 Op 与多结果模式 [49]。
+
+<a id="S108"></a>
+**Source:** p.17 S108
+
+**Original:** Numerous programming languages and models tackle hardware heterogeneity. Originally a homogeneous programming model, OpenMP added support for offloading tasks and parallel regions to accelerators [32], based on earlier proposals such as StarSs and OpenACC [34, 31]. C++ AMP, HCC and SyCL leverage a conventional Clang/LLVM flow and modern C++ to provide a high-level abstraction for hardware acceleration [46]. Unfortunately, all these examples very quickly lower high-level constructs to calls to a runtime execution environment, relying on pre-existing optimizations in the host language (typically C++) to alleviate the abstraction penalty. Far fewer efforts target the heterogeneous compilation process itself. Parallel intermediate representations extending LLVM IR address part of the issue but traditionally focus on the homogeneous setting [23, 42]. The most ambitious effort to date may be Liquid Metal [3], with a co-designed Domain Specific Language (DSL) and compilation flow converting managed object semantics into static, vector or reconfigurable hardware; yet most of the effort in its Lime compiler resides in fitting round objects into square hardware (paraphrasing Kou and Palsberg [24]). MLIR provides a direct embedding for high level languages embracing heterogeneity through an extensible set of operations and types, while providing a common infrastructure for gradually lowering these constructs with maximal reuse of common components across the different targets.
+
+**中文:** 许多程序设计语言与模型都在处理硬件异构性。OpenMP 最初是同构程序设计模型，后来在 StarSs、OpenACC 等早期提案 [34, 31] 的基础上，增加了把任务和并行区域卸载到加速器的支持 [32]。C++ AMP、HCC 与 SyCL 利用传统 Clang/LLVM 流程和现代 C++，提供硬件加速的高层抽象 [46]。遗憾的是，这些方案都会很快把高层构造降低为对运行时执行环境的调用，再依赖宿主语言——通常是 C++——的既有优化来缓解抽象开销。真正针对异构编译过程本身的工作少得多。扩展 LLVM IR 的并行中间表示解决了部分问题，但传统上仍关注同构环境 [23, 42]。当时最具雄心的工作可能是 Liquid Metal [3]：它协同设计 DSL 与编译流程，把托管对象语义转换为静态、向量或可重构硬件；然而，其 Lime 编译器的大部分精力仍用于把“圆形对象塞进方形硬件”（转述 Kou 与 Palsberg [24]）。MLIR 通过可扩展 Op 与类型集合，为拥抱异构性的高级语言提供直接嵌入，并提供共同基础设施逐步降低这些构造，从而最大限度复用不同目标间的通用组件。
+
+<a id="S109"></a>
+**Source:** p.17 S109
+
+**Original:** Tackling language heterogeneity has been a long-term promise of metaprogramming systems, and of multistage programming in particular. Lightweight Modular Staging (LMS) [39] is a state of the art framework and runtime code generator, providing a library of core components for generating efficient code and embedding DSLs in Scala. Delite [45] promises dramatic productivity improvements for DSL developers, while supporting parallel and heterogeneous execution. We believe this approach is complementary to MLIR, providing a higher-level of abstraction to embed DSLs and implement optimizations through generic metaprogramming constructs.
+
+**中文:** 处理语言异构性，一直是元编程系统、尤其是多阶段编程的长期承诺。轻量级模块化分阶段（LMS）[39] 是先进框架与运行时代码生成器，提供核心组件库，用于生成高效代码并在 Scala 中嵌入 DSL。Delite [45] 在支持并行与异构执行的同时，承诺显著提高 DSL 开发者的生产率。作者认为，这类方法与 MLIR 互补：它提供更高抽象层次，通过通用元编程构造嵌入 DSL 并实现优化。
+
+<a id="S110"></a>
+**Source:** p.17 S110
+
+**Original:** One step further up into the language syntax, ANTLR [33] is among a class of parser generators that aim to make it easy to develop a new compiler frontend. MLIR currently does not have a general parser generation, no AST construction or modeling functionality. Combining MLIR with a system such as ANTLR could result in reusable compiler libraries from user input through to code generation.
+
+**中文:** 再向语言语法上层迈一步，ANTLR [33] 属于一类旨在简化新编译器前端开发的解析器生成器。MLIR 当时没有通用解析器生成能力，也没有 AST 构建或建模功能。把 MLIR 与 ANTLR 等系统结合，可能形成从用户输入一直覆盖到代码生成的可复用编译器程序库。
+
+<a id="S111"></a>
+**Source:** pp.17–18 S111
+
+**Original:** More narrowly construed by their application to machine learning, XLA [57], Glow [40] and TVM [11] address similar heterogeneous compilation objectives. Yet these are rather specific code generation instances starting from a graph abstraction and targeting multi-dimensional vector abstractions for accelerators. All of these could leverage MLIR as infrastructure, taking advantage of the common functionality while using their current code generation strategies. Similarly, the loop nest metaprogramming techniques from Halide [36] and TVM [11], earlier loop nest metaprogramming [19, 41, 5, 14], and fully automatic flows such as PolyMage [28], Tensor Comprehensions [52], Stripe [58], Diesel [16], Tiramisu [4] and their underlying polyhedral compilation techniques [17, 54, 8, 55] could co-exist as different code generation paths within an MLIR-based compilation framework. Serialization and interoperability formats, such as ONNX [48], have a different approach towards addressing the diversity of ML frontends by providing a common set of ops that different frameworks could map on to. ONNX would be a candidate as a dialect in MLIR to which other ops could be lowered to and from.
+
+**中文:** 若把范围收窄到机器学习应用，XLA [57]、Glow [40] 和 TVM [11] 也处理类似的异构编译目标。不过，它们都是较为专门的代码生成实例，从图抽象出发，以加速器的多维向量抽象为目标。它们都可以把 MLIR 用作基础设施，在沿用现有代码生成策略的同时利用通用功能。类似地，Halide [36] 与 TVM [11] 的循环嵌套元编程技术、更早的循环嵌套元编程工作 [19, 41, 5, 14]，以及 PolyMage [28]、Tensor Comprehensions [52]、Stripe [58]、Diesel [16]、Tiramisu [4] 等全自动流程和底层多面体编译技术 [17, 54, 8, 55]，都可以作为不同代码生成路径共存于基于 MLIR 的编译框架中。ONNX [48] 等序列化与互操作格式采用另一种方法：提供一组不同框架都能映射到的共同 Op，以应对机器学习前端的多样性。ONNX 可成为 MLIR 中的一个方言，其他 Op 可以降低到该方言，也可以从中转换出来。
+
+## 8 结论与未来工作
+
+<a id="S112"></a>
+**Source:** p.18 S112
+
+**Original:** We presented MLIR, a flexible and extensible infrastructure for compiler construction. This paper described MLIR’s concrete design, demonstrated its applicability to a range of important domains, and described a number of original research and engineering implications.
+
+**中文:** 本文介绍了 MLIR——一种灵活、可扩展的编译器构建基础设施。论文描述了 MLIR 的具体设计，展示它对一系列重要领域的适用性，并阐述了若干原创性的研究与工程影响。
+
+<a id="S113"></a>
+**Source:** p.18 S113
+
+**Original:** Looking ahead, we are eager to see how established compiler communities (e.g. the Clang C and C++ compiler) as well domain experts can benefit from the introduction of higher level, language-specific IRs. We are also interested to see if MLIR enables new approaches to teaching the art of compiler and IR design, and hope to see entirely new areas of research catalyzed or accelerated by this infrastructure.
+
+**中文:** 展望未来，作者期待看到成熟编译器社区——例如 Clang C/C++ 编译器社区——以及领域专家如何从高层、语言特定 IR 的引入中受益。作者也关心 MLIR 能否促成教授编译器与 IR 设计技艺的新方法，并希望这套基础设施催生或加速全新的研究领域。
+
+<a id="S114"></a>
+**Source:** p.18 S114
+
+**Original:** **Future directions.** There are multiple future directions being pursued for MLIR. In the ML and HPC space, these include inferring efficient Op implementations from reference rank-polymorphic specifications with symbolic shapes. It also involves enabling a wider range of data structures (sparse, graphs) and program transformations, bringing together symbolic reasoning, such as automatic differentiation and algorithmic simplification, with more conventional data flow and control flow-based optimizations. Beyond ML and HPC, one may consider MLIR’s applicability to other related domains, such as secure compilation, safety-critical systems, data analytics and graph processing, relational query optimization, etc.
+
+**中文:** **未来方向。** MLIR 正在推进多个未来方向。在机器学习与 HPC 领域，其中包括从带符号形状、对秩多态的参考规约推导高效 Op 实现；还包括支持更广泛的数据结构——如稀疏结构与图——和程序变换，把自动微分、算法化简等符号推理，与更传统的基于数据流和控制流的优化结合起来。除机器学习与 HPC 外，还可考察 MLIR 在安全编译、安全关键系统、数据分析与图处理、关系查询优化等领域的适用性。
+
+<a id="S115"></a>
+**Source:** p.18 S115
+
+**Original:** Returning to the world of general-purpose languages, an obvious missing front-end is a C++ mid-level representation derived from Clang. Say, a “CIL” similar in spirit to Swift’s SIL and Rust’s MIR, that would facilitate the optimization of common C++ idioms that currently need to be reconstructed from lowered code (e.g., treating std::vector as an array rather than pointer manipulation). Supporting garbage-collected languages, higher-order and polymorphic type systems with type inference in MLIR are open challenges as well.
+
+**中文:** 回到通用语言领域，一个明显缺失的前端是从 Clang 派生的 C++ 中层表示，例如一种在精神上类似 Swift SIL 和 Rust MIR 的“CIL”。它将有助于优化常见 C++ 惯用法；这些结构目前必须从降低后的代码中重建，例如把 std::vector 视为数组，而非一系列指针操作。让 MLIR 支持垃圾收集语言、高阶类型系统，以及带类型推断的多态类型系统，也都是开放挑战。
+
+<a id="S116"></a>
+**Source:** p.18 S116
+
+**Original:** Exploring parallelism and concurrency constructs in LLVM has been difficult, primarily as the changes required are invasive and not easily layered (e.g., injecting metadata and inspecting all passes to ensure metadata is propagated while losing optimization opportunities as the level of abstraction is too low). With MLIR, parallel constructs can be first-class operations, using regions and parallel idiom-specific verification. This would support higher-level transformations before lowering to, e.g., LLVM where regular transformations can be performed on already lowered code.
+
+**中文:** 在 LLVM 中探索并行与并发构造一直很困难，主要原因是所需修改具有侵入性，难以分层。例如，注入元数据后必须检查所有 Pass 以确保元数据得到传播；与此同时，抽象层次过低又会丧失优化机会。在 MLIR 中，并行构造可成为一等 Op，并使用区域和并行惯用法特定的验证。这样，在降低到 LLVM 等表示之前可以先执行高层变换，之后再对已降低代码执行常规变换。
+
+<a id="S117"></a>
+**Source:** p.18 S117
+
+**Original:** Beyond debugging and testing, textual form of IR is also useful for education. Additional tooling to show the interaction of optimizations in high-performance compilation could demystify compilers for new students. IR design is an integral part of developing a new compiler or optimization framework, but many undergraduate compiler curricula do not cover IR design. MLIR provides opportunities for new approaches to such lessons that could be explored.
+
+**中文:** 除调试与测试外，IR 的文本形式也有教育价值。若有额外工具展示高性能编译中各项优化如何交互，就能帮助初学者理解编译器，不再觉得它神秘。IR 设计是开发新编译器或优化框架不可分割的一部分，但许多本科编译器课程并不涉及 IR 设计。MLIR 为探索这类课程的新教学方式提供了机会。
+
+## 参考文献
+
+> 为保持可检索性，作者、英文题名、会议／期刊名及出版信息按原文保留，不翻译题名。PDF 中因换行产生的断词已合并。
+
+<a id="S118"></a>
+**Source:** pp.18–19 S118
+
+**Original:**
+
+[1] M. Abadi, A. Agarwal, P. Barham, E. Brevdo, Z. Chen, C. Citro, G. S. Corrado, A. Davis, J. Dean, M. Devin, S. Ghemawat, I. Goodfellow, A. Harp, G. Irving, M. Isard, Y. Jia, R. Jozefowicz, L. Kaiser, M. Kudlur, J. Levenberg, D. Mané, R. Monga, S. Moore, D. Murray, C. Olah, M. Schuster, J. Shlens, B. Steiner, I. Sutskever, K. Talwar, P. Tucker, V. Vanhoucke, F. Viégas, O. Vinyals, P. Warden, M. Wattenberg, M. Wicke, Y. Yu, and X. Zheng. TensorFlow: Large-scale machine learning on heterogeneous systems, 2015. Software available from tensorflow.org.
+
+**中文:** 参考文献 [1] 保留英文书目信息。
+
+<a id="S119"></a>
+**Source:** p.19 S119
+
+**Original:**
+
+[2] A. W. Appel. SSA is functional programming. ACM SIGPLAN NOTICES, 33(4):17–20, 1998.
+
+[3] J. Auerbach, D. F. Bacon, I. Burcea, P. Cheng, S. J. Fink, R. Rabbah, and S. Shukla. A compiler and runtime for heterogeneous computing. In Proceedings of the 49th Annual Design Automation Conference, DAC ’12, pages 271–276, New York, NY, USA, 2012. ACM.
+
+[4] R. Baghdadi, J. Ray, M. B. Romdhane, E. Del Sozzo, A. Akkas, Y. Zhang, P. Suriana, S. Kamil, and S. Amarasinghe. Tiramisu: A polyhedral compiler for expressing fast and portable code. In Proceedings of the 2019 IEEE/ACM International Symposium on Code Generation and Optimization, CGO 2019, page 193–205. IEEE Press, 2019.
+
+[5] L. Bagnères, O. Zinenko, S. Huot, and C. Bastoul. Opening polyhedral compiler’s black box. In Proceedings of the 2016 International Symposium on Code Generation and Optimization, CGO 2016, Barcelona, Spain, March 12-18, 2016, pages 128–138, 2016.
+
+[6] G. Balakrishnan and T. Reps. Wysinwyx: What you see is not what you execute. ACM Trans. Program. Lang. Syst., 32(6):23:1–23:84, Aug. 2010.
+
+[7] C. Bastoul. Code generation in the polyhedral model is easier than you think. In Proceedings of the 13th International Conference on Parallel Architectures and Compilation Techniques, PACT ’04, pages 7–16, Washington, DC, USA, 2004. IEEE Computer Society.
+
+[8] U. Bondhugula, A. Hartono, J. Ramanujam, and P. Sadayappan. A practical automatic polyhedral parallelizer and locality optimizer. In Proceedings of the ACM SIGPLAN 2008 Conference on Programming Language Design and Implementation, Tucson, AZ, USA, June 7-13, 2008, pages 101–113, 2008.
+
+[9] M. Bravenboer, K. T. Kalleberg, R. Vermaas, and E. Visser. Stratego/xt 0.17. A language and toolset for program transformation. Sci. Comput. Program., 72(1-2):52–70, 2008.
+
+[10] L. Chelini, O. Zinenko, T. Grosser, and H. Corporaal. Declarative loop tactics for domain-specific optimization. TACO, 16(4):55:1–55:25, 2020.
+
+[11] T. Chen, T. Moreau, Z. Jiang, L. Zheng, E. Yan, H. Shen, M. Cowan, L. Wang, Y. Hu, L. Ceze, C. Guestrin, and A. Krishnamurthy. TVM: An automated end-to-end optimizing compiler for deep learning. In 13th USENIX Symposium on Operating Systems Design and Implementation (OSDI 18), pages 578–594, Carlsbad, CA, Oct. 2018. USENIX Association.
+
+[12] Y. Chen, A. Groce, C. Zhang, W. Wong, X. Z. Fern, E. Eide, and J. Regehr. Taming compiler fuzzers. In ACM SIGPLAN Conference on Programming Language Design and Implementation, PLDI ’13, Seattle, WA, USA, June 16-19, 2013, pages 197–208, 2013.
+
+[13] C. Click and K. D. Cooper. Combining analyses, combining optimizations. ACM Trans. Program. Lang. Syst., 17(2):181–196, Mar. 1995.
+
+[14] A. Cohen, S. Donadio, M.-J. Garzaran, C. Herrmann, O. Kiselyov, and D. Padua. In search of a program generator to implement generic transformations for high-performance computing. Sci. Comput. Program., 62(1):25–46, Sept. 2006.
+
+[15] R. Cytron, J. Ferrante, B. K. Rosen, M. N. Wegman, and F. K. Zadeck. Efficiently computing static single assignment form and the control dependence graph. ACM Trans. Program. Lang. Syst., 13(4):451–490, Oct. 1991.
+
+[16] V. Elango, N. Rubin, M. Ravishankar, H. Sandanagobalane, and V. Grover. Diesel: Dsl for linear algebra and neural net computations on gpus. In Proceedings of the 2nd ACM SIGPLAN International Workshop on Machine Learning and Programming Languages, MAPL 2018, pages 42–51, New York, NY, USA, 2018. ACM.
+
+[17] P. Feautrier. Some efficient solutions to the affine scheduling problem. part II. multidimensional time. Int. J. Parallel Program., 21(6):389–420, 1992.
+
+[18] E. Garcia and M. Gupta. Lattice regression. In Y. Bengio, D. Schuurmans, J. D. Lafferty, C. K. I. Williams, and A. Culotta, editors, Advances in Neural Information Processing Systems 22, pages 594–602. Curran Associates, Inc., 2009.
+
+[19] S. Girbal, N. Vasilache, C. Bastoul, A. Cohen, D. Parello, M. Sigler, and O. Temam. Semi-automatic composition of loop transformations for deep parallelism and memory hierarchies. Int. J. Parallel Program., 34(3):261–317, June 2006.
+
+**中文:** 参考文献 [2]–[19] 保留英文书目信息。
+
+<a id="S120"></a>
+**Source:** p.20 S120
+
+**Original:**
+
+[20] T. Grosser, A. Größlinger, and C. Lengauer. Polly - performing polyhedral optimizations on a low-level intermediate representation. Parallel Processing Letters, 22(4), 2012.
+
+[21] W. A. Havanki, S. Banerjia, and T. M. Conte. Treegion scheduling for wide issue processors. In Proceedings of the Fourth International Symposium on High-Performance Computer Architecture, Las Vegas, Nevada, USA, January 31 - February 4, 1998, pages 266–276, 1998.
+
+[22] R. Johnson, D. Pearson, and K. Pingali. The program structure tree: Computing control regions in linear time. In Proceedings of the ACM SIGPLAN 1994 Conference on Programming Language Design and Implementation, PLDI ’94, pages 171–185, New York, NY, USA, 1994. ACM.
+
+[23] D. Khaldi, P. Jouvelot, F. Irigoin, C. Ancourt, and B. Chapman. LLVM parallel intermediate representation: Design and evaluation using OpenSHMEM communications. In Proceedings of the Second Workshop on the LLVM Compiler Infrastructure in HPC, LLVM ’15, pages 2:1–2:8, New York, NY, USA, 2015. ACM.
+
+[24] S. Kou and J. Palsberg. From oo to fpga: Fitting round objects into square hardware? In Proceedings of the ACM International Conference on Object Oriented Programming Systems Languages and Applications, OOPSLA ’10, pages 109–124, New York, NY, USA, 2010. ACM.
+
+[25] C. Lattner and V. Adve. LLVM: A compilation framework for lifelong program analysis & transformation. In Proceedings of the International Symposium on Code Generation and Optimization: Feedback-directed and Runtime Optimization, CGO ’04, pages 75–, Washington, DC, USA, 2004. IEEE Computer Society.
+
+[26] T. Lindholm and F. Yellin. Java Virtual Machine Specification. Addison-Wesley Longman Publishing Co., Inc., Boston, MA, USA, 2nd edition, 1999.
+
+[27] J. Meseguer. Twenty years of rewriting logic. In Proceedings of the 8th International Conference on Rewriting Logic and Its Applications, WRLA’10, pages 15–17, Berlin, Heidelberg, 2010. Springer-Verlag.
+
+[28] R. T. Mullapudi, V. Vasista, and U. Bondhugula. PolyMage: Automatic optimization for image processing pipelines. In International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS), pages 429–443, 2015.
+
+[29] G. C. Necula. Translation validation for an optimizing compiler. SIGPLAN Not., 35(5):83–94, May 2000.
+
+[30] Open64 Developers. Open64 compiler and tools, 2001.
+
+[31] OpenACC application programming interface. Online, https://www.openacc.org, accessed Feb 19, 2020.
+
+[32] OpenMP ARB. The OpenMP API specification for parallel programming. Online, https://www.openmp.org, accessed Feb 19, 2020.
+
+[33] T. J. Parr and R. W. Quong. Antlr: A predicated-ll(k) parser generator. Softw. Pract. Exper., 25(7):789–810, July 1995.
+
+[34] J. Planas, R. M. Badia, E. Ayguadé, and J. Labarta. Hierarchical task-based programming with starss. IJHPCA, 23(3):284–299, 2009.
+
+[35] A. Pnueli, M. Siegel, and E. Singerman. Translation validation. In Tools and Algorithms for Construction and Analysis of Systems, 4th International Conference, TACAS ’98, Held as Part of the European Joint Conferences on the Theory and Practice of Software, ETAPS’98, Lisbon, Portugal, March 28 - April 4, 1998, Proceedings, pages 151–166, 1998.
+
+[36] J. Ragan-Kelley, A. Adams, D. Sharlet, C. Barnes, S. Paris, M. Levoy, S. Amarasinghe, and F. Durand. Halide: Decoupling algorithms from schedules for high-performance image processing. Commun. ACM, 61(1):106–115, Dec. 2017.
+
+[37] G. Ramalingam. On loops, dominators, and dominance frontiers. ACM Trans. Program. Lang. Syst., 24(5):455–490, 2002.
+
+[38] C. Reddy and U. Bondhugula. Effective automatic computation placement and data allocation for parallelization of regular programs. In Proceedings of the 28th ACM International Conference on Supercomputing, ICS ’14, pages 13–22, New York, NY, USA, 2014. ACM.
+
+[39] T. Rompf and M. Odersky. Lightweight modular staging: a pragmatic approach to runtime code generation and compiled dsls. Commun. ACM, 55(6):121–130, 2012.
+
+**中文:** 参考文献 [20]–[39] 保留英文书目信息。
+
+<a id="S121"></a>
+**Source:** p.21 S121
+
+**Original:**
+
+[40] N. Rotem, J. Fix, S. Abdulrasool, G. Catron, S. Deng, R. Dzhabarov, N. Gibson, J. Hegeman, M. Lele, R. Levenstein, J. Montgomery, B. Maher, S. Nadathur, J. Olesen, J. Park, A. Rakhov, M. Smelyanskiy, and M. Wang. Glow: Graph lowering compiler techniques for neural networks, 2018.
+
+[41] G. Rudy, M. M. Khan, M. Hall, C. Chen, and J. Chame. A programming language interface to describe transformations and code generation. In K. Cooper, J. Mellor-Crummey, and V. Sarkar, editors, Languages and Compilers for Parallel Computing, pages 136–150, Berlin, Heidelberg, 2011. Springer Berlin Heidelberg.
+
+[42] T. B. Schardl, W. S. Moses, and C. E. Leiserson. Tapir: Embedding fork-join parallelism into LLVM’s intermediate representation. SIGPLAN Not., 52(8):249–265, Jan. 2017.
+
+[43] B. Schommer, C. Cullmann, G. Gebhard, X. Leroy, M. Schmidt, and S. Wegener. Embedded Program Annotations for WCET Analysis. In WCET 2018: 18th International Workshop on Worst-Case Execution Time Analysis, volume 63, Barcelona, Spain, July 2018. Dagstuhl Publishing.
+
+[44] E. Schweitz. An MLIR dialect for high-level optimization of fortran. LLVM Developer Meeting, Oct 2019.
+
+[45] A. K. Sujeeth, K. J. Brown, H. Lee, T. Rompf, H. Chafi, M. Odersky, and K. Olukotun. Delite: A compiler architecture for performance-oriented embedded domain-specific languages. ACM Trans. Embedded Comput. Syst., 13(4s):134:1–134:25, 2014.
+
+[46] SyCL: C++ single-source heterogeneous programming for OpenCL. Online, https://www.khronos.org/sycl, accessed Feb 19, 2020.
+
+[47] TableGen - LLVM 10 Documentation. Online, =https://llvm.org/docs/TableGen/, accessed Nov 22, 2019, 2019.
+
+[48] The Linux Foundation. ONNX: Open neural network exchange. Online, https://github.com/onnx/onnx, accessed Feb 19, 2020.
+
+[49] P. Thier, M. A. Ertl, and A. Krall. Fast and flexible instruction selection with constraints. In Proceedings of the 27th International Conference on Compiler Construction, CC 2018, pages 93–103, New York, NY, USA, 2018. ACM.
+
+[50] J. Tristan and X. Leroy. Formal verification of translation validators: a case study on instruction scheduling optimizations. In Proceedings of the 35th ACM SIGPLAN-SIGACT Symposium on Principles of Programming Languages, POPL 2008, San Francisco, California, USA, January 7-12, 2008, pages 17–27, 2008.
+
+[51] J. Tristan and X. Leroy. Verified validation of lazy code motion. In Proceedings of the 2009 ACM SIGPLAN Conference on Programming Language Design and Implementation, PLDI 2009, Dublin, Ireland, June 15-21, 2009, pages 316–326, 2009.
+
+[52] N. Vasilache, O. Zinenko, T. Theodoridis, P. Goyal, Z. Devito, W. S. Moses, S. Verdoolaege, A. Adams, and A. Cohen. The next 700 accelerated layers: From mathematical expressions of network computation graphs to accelerated GPU kernels, automatically. ACM Trans. Archit. Code Optim., 16(4):38:1–38:26, Oct. 2019.
+
+[53] A. Veen. Dataflow machine architecture. ACM Comput. Surv., 18:365–396, 12 1986.
+
+[54] S. Verdoolaege. ISL: An integer set library for the polyhedral model. In Proceedings of the Third International Congress Conference on Mathematical Software, ICMS’10, pages 299–302, Berlin, Heidelberg, 2010. Springer-Verlag.
+
+[55] S. Verdoolaege, J. Carlos Juega, A. Cohen, J. Ignacio Gómez, C. Tenllado, and F. Catthoor. Polyhedral parallel code generation for CUDA. ACM Trans. Archit. Code Optim., 9(4):54:1–54:23, Jan. 2013.
+
+[56] S. T. Vu, K. Heydemann, A. de Grandmaison, and A. Cohen. Secure delivery of program properties through optimizing compilation. In ACM SIGPLAN 2020 International Conference on Compiler Construction (CC 2020), San Diego, CA, Feb. 2020.
+
+[57] XLA - TensorFlow, compiled. Google Developers Blog, https://developers.googleblog.com/2017/03/xla-tensorflow-compiled.html, Mar 2017.
+
+[58] T. Zerrell and J. Bruestle. Stripe: Tensor compilation via the nested polyhedral model. CoRR, abs/1903.06498, 2019.
+
+**中文:** 参考文献 [40]–[58] 保留英文书目信息。
+
+## 精读提示
+
+### 一条主线
+
+这篇论文真正提出的不是“又一种固定 IR”，而是一套**构造 IR 生态的元基础设施**：用少量统一容器（Op、region、block、type、attribute）承载可开放扩展的语义，再用 dialect 组织领域概念，以声明式描述、重写系统、验证器、Pass 管理和优化接口提供共同工程能力。多个抽象层次可以同时存在，并在需要时逐 Op、逐区域地降低。
+
+### 五个需要连起来理解的设计点
+
+1. **Op—region—block 的递归结构**让函数、循环、闭包、图节点和模块不再是核心 IR 中彼此割裂的特殊对象。
+2. **方言可混合**使高层语义不必一次性消失；同一模块中可以同时存在 TensorFlow、affine、GPU 和 LLVM 层次的 Op。
+3. **渐进式降低**把“一条刚性流水线”改成在多个抽象层之间执行小步重写，并允许优化、使能、降低和清理相互交错。
+4. **特征、钩子与优化接口**解决“通用 Pass 如何处理未知 Op”的问题：核心算法只依赖最少语义契约，具体知识由方言提供。
+5. **ODS／DRR 与可往返文本形式**把可扩展性落到工程实践：定义、验证、文档、重写和测试都能由共同来源驱动。
+
+### 论文的证据链
+
+论文的证据主要是**设计论证加多领域案例**，而不是传统的基准测试。TensorFlow 图说明 MLIR 能承载异步数据流语义；仿射方言说明它能保留结构并结合传统 SSA 优化；FIR 说明高层语言语义可以成为一等概念；格回归编译器则给出 3 人月开发、生产模型最高 8 倍性能提升的具体工程结果。社区采用数据被用作“存在真实需求且基础设施可用”的替代指标。
+
+### 阅读时应保留的疑问
+
+- **评估强度有限。** 论文没有系统比较编译时间、内存占用、生成代码性能或开发成本；案例证明“可行且有吸引力”，尚不足以单独证明所有设计选择优于替代方案。
+- **开放性会把复杂度移到生态治理。** “几乎一切可定制”与“避免内部碎片化”之间存在持续张力；命名、语义兼容、方言边界和转换质量无法只靠核心数据结构解决。
+- **混合方言既是能力也是负担。** 它提高复用与渐进式降低能力，但同时要求转换合法性、跨方言接口、验证和阶段规划都足够清晰。
+- **这是一篇 2020 年的设计与经验快照。** 文中社区数量、方言数量和若干“未来方向”应按论文发表时理解；读者若要判断今天的实现状态，需要另查当前 MLIR 文档与代码。
+- **论文更像设计宣言，而非完整语义规范。** 它解释“为什么这样设计”非常出色，但具体 Op、方言与 API 的约束仍应以对应版本的实现和规范为准。

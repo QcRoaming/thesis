@@ -1,0 +1,24 @@
+\documentclass[
+    degree = master,       % 学位类型：phd | master
+    academic = false,       % 学术学位（true）或专业学位（false）
+    blindreview = false,   % 盲审模式：隐藏作者、导师信息及致谢
+    colorcover = true,     % 彩色封面（仅硕博有效）
+    listfigures = true,   % 生成图目录和表目录（仅硕博有效）
+    bibindent = firstline, % 参考文献缩进：firstline | none | hanging
+]{nwputhesis}
+
+% 默认生成无空白隔页的阅读版；graduate-print.tex 保留模板的奇数页起排。
+% 仅覆盖隔页命令，保留原有页眉、页边距和章节独立起页。
+\ifdefined\ThesisPrintVersion
+\else
+    \let\cleardoublepage\clearpage
+\fi
+
+% 兼容未提供 HyperLocalCurrentHref 的 hyperref，确保目录书签有有效目标。
+\makeatletter
+\ifx\HyperLocalCurrentHref\@empty
+    \renewcommand*{\HyperLocalCurrentHref}{\@currentHref}
+\fi
+\makeatother
+
+\input{content/thesis/graduate/thesis-body}

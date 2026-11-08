@@ -1,0 +1,77 @@
+{
+  "experiment_id": "thesis.chapter5_blis_adapter",
+  "task": {
+    "id": "anchor_192x256x256_f32",
+    "op": "linalg.matmul",
+    "dtype": "f32",
+    "m": 192,
+    "n": 256,
+    "k": 256,
+    "target": "x86_64-avx2-fma"
+  },
+  "candidate": {
+    "tile_m": 24,
+    "tile_n": 32,
+    "tile_k": 64,
+    "mr": 6,
+    "nr": 16,
+    "pack_a": true,
+    "pack_b": true
+  },
+  "results": [
+    {
+      "variant": "fallback_vectorized",
+      "predicted_path": "fallback",
+      "observed_path": "fallback",
+      "status": "PASS",
+      "microkernel_replaced": false,
+      "packing_alloc_count": 0,
+      "wrapper_call_count_ir": 0,
+      "blis_kernel_symbol_present": false,
+      "linalg_matmul_remaining": false,
+      "median_ms": 13.560975,
+      "min_ms": 10.861017,
+      "max_ms": 15.690948,
+      "gflops": 1.856,
+      "max_abs_diff": 1.19e-06,
+      "max_rel_diff": 0.00038045,
+      "checksum": 8.30373268,
+      "llvm_ir_bytes": 566595,
+      "executable_bytes": 546336,
+      "warmups": 3,
+      "repeats": 11,
+      "inner_iters": 1,
+      "cpu_affinity": 0
+    },
+    {
+      "variant": "direct_blis_6x16",
+      "predicted_path": "direct",
+      "observed_path": "direct",
+      "status": "PASS",
+      "microkernel_replaced": true,
+      "packing_alloc_count": 3,
+      "wrapper_call_count_ir": 1,
+      "blis_kernel_symbol_present": true,
+      "linalg_matmul_remaining": false,
+      "median_ms": 0.727804,
+      "min_ms": 0.539766,
+      "max_ms": 1.15353,
+      "gflops": 34.578,
+      "max_abs_diff": 1.07e-06,
+      "max_rel_diff": 0.00035693,
+      "checksum": 8.30335683,
+      "llvm_ir_bytes": 17829,
+      "executable_bytes": 1408560,
+      "warmups": 3,
+      "repeats": 11,
+      "inner_iters": 1,
+      "cpu_affinity": 0
+    }
+  ],
+  "comparison": {
+    "direct_speedup_over_fallback": 18.632729416161492,
+    "direct_gflops_ratio": 18.630387931034484,
+    "llvm_ir_size_ratio": 0.0314669208164562
+  },
+  "claim_boundary": "Rank-2 row-major f32 GEMM on one x86-64 AVX2/FMA host. Static direct, M/N/K fringe adapt, and one-binary dynamic-shape execution are implemented for the fixed BLIS Haswell 6x16 microkernel; arbitrary layouts, additional dtypes/contracts, and cross-host statistics remain outside this experiment."
+}
